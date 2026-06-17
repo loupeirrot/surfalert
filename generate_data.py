@@ -112,31 +112,28 @@ def analyze_spot(spot_cfg):
 
 # ──────────────────────────────────────────
 # MARÉES (sans clé : on déduit les pleines/basses mers de la hauteur d'eau Open-Meteo)
-# Les 5 spots sont à quelques km → une seule mesure suffit pour toute la zone.
+# Une mesure par RÉGION : les horaires de marée diffèrent le long de la côte.
 # ──────────────────────────────────────────
-ZONE_LAT, ZONE_LON = 43.66, -1.44
-
-def fetch_tides():
+def fetch_sea_level(lat, lon):
     last_err = None
     for attempt in range(3):
         try:
             r = requests.get("https://marine-api.open-meteo.com/v1/marine", params={
-                "latitude": ZONE_LAT, "longitude": ZONE_LON,
+                "latitude": lat, "longitude": lon,
                 "hourly": "sea_level_height_msl",
                 "timezone": "Europe/Paris",
                 "forecast_days": FORECAST_DAYS,
             }, timeout=30)
             r.raise_for_status()
-            break
+            j = r.json()
+            return j["hourly"]["time"], j["hourly"]["sea_level_height_msl"]
         except Exception as e:
             last_err = e
             print(f"  ⏳ marées : tentative {attempt + 1}/3 échouée ({e})")
-    else:
-        raise last_err
-    j = r.json()
-    times = j["hourly"]["time"]
-    h = j["hourly"]["sea_level_height_msl"]
+    raise last_err
 
+
+def compute_extremes(times, h):
     extremes = []
     for i in range(1, len(h) - 1):
         a, b, c = h[i - 1], h[i], h[i + 1]
@@ -159,6 +156,20 @@ def fetch_tides():
     return extremes
 
 
+def fetch_tides_by_region():
+    """Une série de marées par région, au barycentre des spots de la région."""
+    regions = {}
+    for cfg in SPOTS.values():
+        regions.setdefault(cfg["region"], []).append((cfg["lat"], cfg["lon"]))
+    tides = {}
+    for region, pts in regions.items():
+        lat = sum(p[0] for p in pts) / len(pts)
+        lon = sum(p[1] for p in pts) / len(pts)
+        times, h = fetch_sea_level(lat, lon)
+        tides[region] = compute_extremes(times, h)
+    return tides
+
+
 def main():
     print(f"[{datetime.now(TZ).strftime('%H:%M')}] Génération des données dashboard...")
     spots_data = []
@@ -169,6 +180,7 @@ def main():
             hours = analyze_spot(spot_cfg)
             spots_data.append({
                 "name": spot_name,
+                "region": spot_cfg["region"],
                 "priority": spot_cfg["priority"],
                 "lat": spot_cfg["lat"],
                 "lon": spot_cfg["lon"],
@@ -179,10 +191,11 @@ def main():
             print(f"  ❌ Erreur sur {spot_name}: {e}")
 
     try:
-        tides = fetch_tides()
-        print(f"  → {len(tides)} marées (pleines/basses mers) calculées")
+        tides = fetch_tides_by_region()
+        total = sum(len(v) for v in tides.values())
+        print(f"  → marées : {total} extrema sur {len(tides)} régions")
     except Exception as e:
-        tides = []
+        tides = {}
         print(f"  ❌ Marées indisponibles : {e}")
 
     output = {

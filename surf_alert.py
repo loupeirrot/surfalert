@@ -42,40 +42,92 @@ ALERT_FIRE     = 8.5       # Score "session pro" sur spots prioritaires (vibrati
 FORECAST_HOURS = 120       # Fenêtre d'analyse (5 jours)
 
 # Chaque spot a ses paramètres propres :
+#   region     : pour regrouper les spots dans l'appli
 #   swell_opt  : direction de houle idéale (degrés)
 #   swell_tol  : tolérance angulaire (±°) avant pénalité
-#   h_ideal    : plage de hauteur idéale pour filmer (min, max en mètres)
-#   priority   : "fire" = alerte urgente possible | "standard"
+#   h_ideal    : plage de hauteur idéale (min, max en mètres)
+#   priority   : "fire" = spot d'exception | "standard"
+# NB : les réglages des spots hors Landes sont des estimations de départ (à affiner).
 SPOTS = {
+    # ───────── Landes ─────────
     "🔥 La Nord (Hossegor)": {
-        "lat": 43.6750, "lon": -1.4380,
+        "region": "Landes", "lat": 43.6750, "lon": -1.4380,
         "swell_opt": 215, "swell_tol": 25,   # SO, canalisé par le Gouf
-        "h_ideal": (1.5, 4.0),
-        "priority": "fire",
+        "h_ideal": (1.5, 4.0), "priority": "fire",
     },
     "🏖 La Gravière (Hossegor)": {
-        "lat": 43.6673, "lon": -1.4347,
+        "region": "Landes", "lat": 43.6673, "lon": -1.4347,
         "swell_opt": 220, "swell_tol": 25,   # SO
-        "h_ideal": (1.5, 3.5),
-        "priority": "fire",
+        "h_ideal": (1.5, 3.5), "priority": "fire",
     },
     "🏄 Les Estagnots (Seignosse)": {
-        "lat": 43.7045, "lon": -1.4289,
+        "region": "Landes", "lat": 43.7045, "lon": -1.4289,
         "swell_opt": 240, "swell_tol": 30,   # O/SO
-        "h_ideal": (1.2, 3.5),
-        "priority": "standard",
+        "h_ideal": (1.2, 3.5), "priority": "standard",
     },
     "🌊 Santocha (Capbreton)": {
-        "lat": 43.6464, "lon": -1.4452,
+        "region": "Landes", "lat": 43.6464, "lon": -1.4452,
         "swell_opt": 255, "swell_tol": 35,   # O, filtré par le Gouf
-        "h_ideal": (0.8, 2.5),               # fonctionne plus petit
-        "priority": "standard",
+        "h_ideal": (0.8, 2.5), "priority": "standard",
     },
     "🏴 La Piste (Capbreton)": {
-        "lat": 43.6380, "lon": -1.4460,
+        "region": "Landes", "lat": 43.6380, "lon": -1.4460,
         "swell_opt": 250, "swell_tol": 35,   # O/SO
-        "h_ideal": (1.0, 3.0),
-        "priority": "standard",
+        "h_ideal": (1.0, 3.0), "priority": "standard",
+    },
+    # ───────── Pays Basque ─────────
+    "🏄 Côte des Basques (Biarritz)": {
+        "region": "Pays Basque", "lat": 43.4793, "lon": -1.5658,
+        "swell_opt": 290, "swell_tol": 40,   # O/NO, marche petit
+        "h_ideal": (0.8, 2.5), "priority": "standard",
+    },
+    "🌊 Les Cavaliers (Anglet)": {
+        "region": "Pays Basque", "lat": 43.5269, "lon": -1.5266,
+        "swell_opt": 285, "swell_tol": 35,
+        "h_ideal": (1.0, 3.0), "priority": "standard",
+    },
+    "🏖 Hendaye": {
+        "region": "Pays Basque", "lat": 43.3760, "lon": -1.7790,
+        "swell_opt": 300, "swell_tol": 40,   # abrité, demande de la taille
+        "h_ideal": (0.8, 2.5), "priority": "standard",
+    },
+    # ───────── Gironde ─────────
+    "🏄 Lacanau Océan": {
+        "region": "Gironde", "lat": 44.9772, "lon": -1.2050,
+        "swell_opt": 270, "swell_tol": 40,
+        "h_ideal": (1.0, 3.0), "priority": "standard",
+    },
+    "🌊 Le Porge Océan": {
+        "region": "Gironde", "lat": 44.8722, "lon": -1.2030,
+        "swell_opt": 270, "swell_tol": 40,
+        "h_ideal": (1.0, 3.0), "priority": "standard",
+    },
+    "🏖 Cap Ferret": {
+        "region": "Gironde", "lat": 44.6300, "lon": -1.2520,
+        "swell_opt": 265, "swell_tol": 40,
+        "h_ideal": (1.0, 3.0), "priority": "standard",
+    },
+    # ───────── Vendée ─────────
+    "🌊 La Sauzaie (Brétignolles)": {
+        "region": "Vendée", "lat": 46.8350, "lon": -1.9120,
+        "swell_opt": 270, "swell_tol": 45,
+        "h_ideal": (1.0, 3.0), "priority": "standard",
+    },
+    "🏄 Les Conches (Longeville)": {
+        "region": "Vendée", "lat": 46.4150, "lon": -1.5000,
+        "swell_opt": 250, "swell_tol": 45,
+        "h_ideal": (1.0, 3.0), "priority": "standard",
+    },
+    # ───────── Finistère ─────────
+    "🔥 La Torche": {
+        "region": "Finistère", "lat": 47.8370, "lon": -4.3490,
+        "swell_opt": 270, "swell_tol": 45,   # très exposé
+        "h_ideal": (1.0, 3.5), "priority": "fire",
+    },
+    "🌊 La Palue (Crozon)": {
+        "region": "Finistère", "lat": 48.2240, "lon": -4.5660,
+        "swell_opt": 280, "swell_tol": 40,   # beach break costaud
+        "h_ideal": (1.2, 3.5), "priority": "standard",
     },
 }
 

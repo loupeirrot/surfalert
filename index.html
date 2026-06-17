@@ -131,6 +131,8 @@
 <div class="wrap">
   <div class="updated" id="updated"></div>
   <div class="card" id="resume" style="padding:15px 18px;margin-bottom:20px;font-size:0.92rem;display:none"></div>
+  <div class="filters" id="myspots-bar" style="margin-bottom:14px"></div>
+  <div class="card" id="spots-panel" style="padding:8px 10px;margin-bottom:20px;display:none"></div>
 
   <div class="filters" id="filters">
     <button data-th="0">tout voir</button>
@@ -149,7 +151,8 @@
 
 <script>
 const GO = 7.5, PRO = 8.5;
-let DATA = null, TIDES = [], threshold = 7.5;
+let DATA = null, TIDES = {}, threshold = 7.5;
+let FAVS = JSON.parse(localStorage.getItem('surfalert_favs') || '[]');
 
 function grad(s) {
   if (s >= PRO) return 'linear-gradient(135deg,#ffb86c,#ff8a4c)';
@@ -162,11 +165,50 @@ function solid(s) {
   if (s >= PRO) return '#ff9a5c'; if (s >= GO) return '#4fe0c0';
   if (s >= 6) return '#ffce6a'; if (s >= 4) return '#7fb4e6'; return '#9a93b8';
 }
+// ───── Mes spots / favoris (stockés en local sur l'appareil) ─────
+function activeSpots() {
+  if (!DATA) return [];
+  if (FAVS.length) { const f = DATA.spots.filter(s => FAVS.includes(s.name)); if (f.length) return f; }
+  return DATA.spots;
+}
+function saveFavs() { localStorage.setItem('surfalert_favs', JSON.stringify(FAVS)); }
+function toggleFav(name) {
+  const i = FAVS.indexOf(name);
+  if (i >= 0) FAVS.splice(i, 1); else FAVS.push(name);
+  saveFavs(); refreshSpots();
+}
+function refreshSpots() { renderMySpotsBar(); renderSpotsPanel(); setBanner(DATA); setResume(DATA); rerender(); }
+function renderMySpotsBar() {
+  const bar = document.getElementById('myspots-bar'); if (!bar) return;
+  const n = FAVS.length;
+  bar.innerHTML = `<button id="spots-toggle">⭐ mes spots${n ? ' (' + n + ')' : ''}</button>`
+    + (n ? `<button id="spots-clear">tout afficher</button>` : '');
+  document.getElementById('spots-toggle').onclick = () => {
+    const p = document.getElementById('spots-panel');
+    p.style.display = p.style.display === 'none' ? 'block' : 'none';
+  };
+  const clr = document.getElementById('spots-clear');
+  if (clr) clr.onclick = () => { FAVS = []; saveFavs(); refreshSpots(); };
+}
+function renderSpotsPanel() {
+  const panel = document.getElementById('spots-panel'); if (!panel || !DATA) return;
+  const byRegion = {};
+  for (const s of DATA.spots) (byRegion[s.region] = byRegion[s.region] || []).push(s);
+  panel.innerHTML = Object.keys(byRegion).map(region =>
+    `<div class="label" style="margin:8px 6px 4px">${region}</div>`
+    + byRegion[region].map(s => {
+        const on = FAVS.includes(s.name);
+        return `<div class="spotrow" data-name="${s.name}" style="display:flex;justify-content:space-between;align-items:center;padding:9px 10px;border-radius:12px;cursor:pointer;${on ? 'background:rgba(79,224,192,0.14)' : ''}">
+          <span>${s.name}</span><span style="font-size:1.05rem">${on ? '⭐' : '☆'}</span></div>`;
+      }).join('')
+  ).join('');
+  panel.querySelectorAll('.spotrow').forEach(row => { row.onclick = () => toggleFav(row.dataset.name); });
+}
 // Bandeau adapté aux conditions de l'instant : on prend l'heure la plus proche de
 // maintenant, sur le spot qui marche le mieux à cet instant, et on choisit l'image.
-function currentEntry(data) {
+function currentEntry() {
   const now = Date.now(); let best = null;
-  for (const spot of data.spots) {
+  for (const spot of activeSpots()) {
     if (!spot.hours.length) continue;
     const h = spot.hours.reduce((a, b) =>
       Math.abs(new Date(b.time) - now) < Math.abs(new Date(a.time) - now) ? b : a);
@@ -194,7 +236,7 @@ const PALETTES = {
   night:  { top: '#070b1f', bg: 'linear-gradient(165deg,#070b1f 0%,#0d1738 34%,#0a2440 68%,#0a3550 100%)', blobs: ['#13315c','#1a2a5a','#0a3d54'] },
 };
 function setBanner(data) {
-  const mood = pickBanner(currentEntry(data));
+  const mood = pickBanner(currentEntry());
   const img = document.getElementById('banner-img');
   if (img) img.src = 'assets/wave-' + mood + '.webp';
   const p = PALETTES[mood]; if (!p) return;
@@ -208,9 +250,9 @@ function sizeWord(h) {
   if (h < 1.5) return 'petit à moyen'; if (h < 2) return 'moyen';
   if (h < 3) return 'costaud'; return 'gros';
 }
-function bestUpcoming(data) {
+function bestUpcoming() {
   const since = Date.now() - 3600 * 1000; let best = null;
-  for (const spot of data.spots) for (const h of spot.hours) {
+  for (const spot of activeSpots()) for (const h of spot.hours) {
     if (!h.daytime || new Date(h.time) < since) continue;
     if (!best || h.score > best.h.score) best = { spot, h };
   }
@@ -218,7 +260,7 @@ function bestUpcoming(data) {
 }
 function setResume(data) {
   const el = document.getElementById('resume'); if (!el) return;
-  const now = currentEntry(data), up = bestUpcoming(data);
+  const now = currentEntry(), up = bestUpcoming();
   const dateStr = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
   let txt = '';
   if (now) { const v = verdict(now.score); txt += `${v.emoji} <b>${v.label}</b> maintenant · `; }
@@ -302,7 +344,7 @@ function range(win) {
 }
 function heroCard(spot, win, joursFr) {
   const p = win.peak, c = solid(p.score), g = grad(p.score), v = verdict(p.score);
-  const tide = tideLine(p.time, TIDES);
+  const tide = tideLine(p.time, TIDES[spot.region]);
   return `<div class="card hero" style="--hero-glow:${c}">
     <span class="htag" style="background:${v.color}30;color:${v.color};border:1px solid ${v.color}66">${tagText(p.score, spot.priority)}</span>
     <div class="hscore"><span class="n" style="background-image:${g}">${p.score}</span><span class="o">/10</span></div>
@@ -315,7 +357,7 @@ function heroCard(spot, win, joursFr) {
 }
 function sessionCard(spot, win, joursFr) {
   const p = win.peak;
-  const tide = tideLine(p.time, TIDES);
+  const tide = tideLine(p.time, TIDES[spot.region]);
   return `<div class="card session">
     <div class="score-box" style="background:${grad(p.score)}"><span class="n">${p.score}</span></div>
     <div class="info">
@@ -329,11 +371,11 @@ function sessionCard(spot, win, joursFr) {
 }
 function renderSummary() {
   const all = [];
-  for (const spot of DATA.spots)
+  for (const spot of activeSpots())
     for (const win of findWindows(spot.hours, threshold)) all.push({ spot, win });
   const el = document.getElementById('summary');
   if (!all.length) {
-    const tops = DATA.spots.map(s => ({ spot: s, h: bestHour(s.hours) }))
+    const tops = activeSpots().map(s => ({ spot: s, h: bestHour(s.hours) }))
       .filter(x => x.h).sort((a,b) => b.h.score - a.h.score).slice(0, 4);
     const [first, ...rest] = tops;
     el.innerHTML = `<div class="card empty">😴 aucune session ≥ ${threshold} dans les 5 prochains jours.<br>
@@ -360,7 +402,7 @@ function renderDetail() {
     <span><i class="dot" style="background:var(--mid)"></i>6–7.5</span>
     <span><i class="dot" style="background:var(--go)"></i>≥7.5</span>
     <span><i class="dot" style="background:var(--pro)"></i>≥8.5</span></div>`;
-  el.innerHTML = legend + DATA.spots.map(spot => {
+  el.innerHTML = legend + activeSpots().map(spot => {
     const fire = spot.priority === 'fire' ? '<span class="badge-fire">fire</span>' : '';
     const days = groupByDay(spot.hours);
     const rows = Object.keys(days).sort().map(key => {
@@ -382,9 +424,11 @@ function renderDetail() {
 function rerender() { renderSummary(); renderDetail(); }
 function init(data) {
   DATA = data;
-  TIDES = data.tides || [];
+  TIDES = data.tides || {};
   setBanner(data);
   setResume(data);
+  renderMySpotsBar();
+  renderSpotsPanel();
   const upd = new Date(data.generated_at);
   document.getElementById('updated').textContent = 'mis à jour le ' + upd.toLocaleDateString('fr-FR')
     + ' à ' + upd.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
