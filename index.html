@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🌊 SurfAlert — Côte Landaise</title>
+<style>
+  :root {
+    --bg: #0a1929;
+    --bg-card: #102a43;
+    --bg-cell: #1c3a5e;
+    --text: #e8f1f8;
+    --text-dim: #7a98b8;
+    --fire: #ff3b30;
+    --c-red: #44617f;
+    --c-low: #4a7c8c;
+    --c-mid: #d9a441;
+    --c-good: #2ec16a;
+    --c-fire: #ff6b35;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+    padding: 16px;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+  header { text-align: center; margin-bottom: 6px; }
+  h1 { font-size: 1.6rem; letter-spacing: -0.5px; }
+  .subtitle { color: var(--text-dim); font-size: 0.85rem; }
+  .updated { color: var(--text-dim); font-size: 0.78rem; margin-top: 4px; }
+
+  /* ---- Filtre ---- */
+  .filters { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin: 18px 0 8px; }
+  .filters button {
+    background: var(--bg-card); color: var(--text-dim);
+    border: 1px solid transparent; border-radius: 20px;
+    padding: 7px 13px; font-size: 0.8rem; cursor: pointer; transition: all .15s;
+    font-weight: 600;
+  }
+  .filters button:hover { color: var(--text); }
+  .filters button.active { background: var(--c-good); color: #04210f; border-color: var(--c-good); }
+
+  .section-title { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 1px;
+    color: var(--text-dim); margin: 22px 0 10px; }
+
+  /* ---- Cartes session (résumé) ---- */
+  .session {
+    display: flex; align-items: stretch; gap: 12px;
+    background: var(--bg-card); border-radius: 12px; padding: 12px 14px; margin-bottom: 10px;
+    box-shadow: 0 3px 12px rgba(0,0,0,0.2);
+  }
+  .session .score-box {
+    flex-shrink: 0; width: 58px; border-radius: 10px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    color: #04210f; font-weight: 800;
+  }
+  .session .score-box .n { font-size: 1.35rem; line-height: 1; }
+  .session .score-box .o { font-size: 0.55rem; opacity: 0.75; }
+  .session .info { flex: 1; min-width: 0; }
+  .session .where { font-size: 1.05rem; font-weight: 700; }
+  .session .when { font-size: 0.9rem; color: var(--text); margin-top: 1px; }
+  .session .when b { color: #fff; }
+  .session .cond { font-size: 0.8rem; color: var(--text-dim); margin-top: 4px; }
+  .session .tag { font-size: 0.62rem; font-weight: 800; letter-spacing: 0.5px;
+    padding: 2px 7px; border-radius: 20px; display: inline-block; margin-bottom: 3px; }
+  .tag.pro { background: var(--c-fire); color: #2b0d00; }
+  .tag.go  { background: var(--c-good); color: #04210f; }
+  .tag.ok  { background: var(--c-mid); color: #2b1d00; }
+
+  .empty { background: var(--bg-card); border-radius: 12px; padding: 18px;
+    text-align: center; color: var(--text-dim); font-size: 0.9rem; }
+
+  /* ---- Détail repliable ---- */
+  .toggle {
+    width: 100%; background: var(--bg-card); color: var(--text);
+    border: none; border-radius: 12px; padding: 13px; font-size: 0.9rem; font-weight: 600;
+    cursor: pointer; margin-top: 14px; display: flex; justify-content: center; gap: 8px;
+  }
+  #detail { margin-top: 10px; }
+  #detail.hidden { display: none; }
+
+  .spot { background: var(--bg-card); border-radius: 14px; padding: 14px; margin-bottom: 14px; }
+  .spot-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+  .spot-name { font-size: 1.05rem; font-weight: 600; }
+  .badge-fire { font-size: 0.6rem; font-weight: 700; background: var(--fire); color: #fff;
+    padding: 2px 7px; border-radius: 20px; }
+
+  .day { margin-top: 10px; }
+  .day-label { font-size: 0.72rem; color: var(--text-dim); margin-bottom: 4px; text-transform: capitalize; }
+  .timeline { display: flex; gap: 2px; }
+  .cell {
+    flex: 1; min-width: 0; height: 36px; border-radius: 4px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    font-size: 0.6rem; color: rgba(255,255,255,0.9); position: relative; transition: opacity .15s;
+  }
+  .cell .h { font-size: 0.52rem; opacity: 0.7; }
+  .cell .sc { font-weight: 700; font-size: 0.7rem; }
+  .cell.dim { opacity: 0.18; }
+  .cell.night { opacity: 0.18; }
+  .cell:hover::after {
+    content: attr(data-tip);
+    position: absolute; bottom: 110%; left: 50%; transform: translateX(-50%);
+    background: #000; color: #fff; padding: 6px 9px; border-radius: 6px;
+    font-size: 0.7rem; white-space: pre; z-index: 10; pointer-events: none;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+  }
+  .legend { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;
+    margin: 10px 0; font-size: 0.68rem; color: var(--text-dim); }
+  .legend span { display: flex; align-items: center; gap: 4px; }
+  .dot { width: 11px; height: 11px; border-radius: 3px; display: inline-block; }
+  footer { text-align: center; color: var(--text-dim); font-size: 0.72rem; margin-top: 24px; }
+  .error { background: #5a1a1a; padding: 16px; border-radius: 10px; text-align: center; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🌊 SurfAlert</h1>
+  <div class="subtitle">Où &amp; quand filmer — côte landaise</div>
+  <div class="updated" id="updated"></div>
+</header>
+
+<div class="filters" id="filters">
+  <button data-th="0">Tout voir</button>
+  <button data-th="6">🆗 ≥6</button>
+  <button data-th="7.5" class="active">📸 GO FILMER</button>
+  <button data-th="8.5">🚨 PRO</button>
+</div>
+
+<div id="summary"></div>
+
+<button class="toggle" id="toggle">📊 Voir le détail heure par heure ▼</button>
+<div id="detail" class="hidden"></div>
+
+<footer>Données Open-Meteo · surfalert.fr</footer>
+
+<script>
+const GO = 7.5, PRO = 8.5;
+let DATA = null;
+let threshold = 7.5;
+
+function scoreColor(s) {
+  if (s >= PRO)  return 'var(--c-fire)';
+  if (s >= GO)   return 'var(--c-good)';
+  if (s >= 6)    return 'var(--c-mid)';
+  if (s >= 4)    return 'var(--c-low)';
+  return 'var(--c-red)';
+}
+
+function whenLabel(dateStr, joursFr, withHour) {
+  const d = new Date(dateStr);
+  const today = new Date(); today.setHours(0,0,0,0);
+  const that = new Date(d); that.setHours(0,0,0,0);
+  const diff = Math.round((that - today) / 86400000);
+  const jour = joursFr[(d.getDay() + 6) % 7];
+  const dm = d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' });
+  let base;
+  if (diff === 0) base = "Aujourd'hui";
+  else if (diff === 1) base = 'Demain';
+  else base = `${jour.charAt(0).toUpperCase() + jour.slice(1)} ${dm}`;
+  return base;
+}
+
+// Détecte les créneaux continus (heures de jour consécutives) dont le pic >= seuil
+function findWindows(hours, th) {
+  const day = hours.filter(h => h.daytime);
+  const windows = [];
+  let cur = null;
+  for (const h of day) {
+    if (h.score >= th || (th === 0 && h.score >= 4)) {
+      if (cur && (new Date(h.time) - new Date(cur[cur.length-1].time)) <= 3600*1000+1) {
+        cur.push(h);
+      } else {
+        if (cur) windows.push(cur);
+        cur = [h];
+      }
+    } else if (cur) { windows.push(cur); cur = null; }
+  }
+  if (cur) windows.push(cur);
+  return windows.map(w => ({
+    start: w[0].time, end: w[w.length-1].time,
+    peak: w.reduce((a,b) => b.score > a.score ? b : a),
+  }));
+}
+
+function bestHour(hours) {
+  const day = hours.filter(h => h.daytime);
+  return day.length ? day.reduce((a,b) => b.score > a.score ? b : a) : null;
+}
+
+function sessionTag(score, priority) {
+  if (score >= PRO && priority === 'fire') return ['pro', '🚨 SESSION PRO'];
+  if (score >= GO) return ['go', '📸 GO FILMER'];
+  if (score >= 6)  return ['ok', '🆗 SURFABLE'];
+  return ['ok', '🌊 PETIT'];
+}
+
+function sessionCard(spot, win, joursFr) {
+  const p = win.peak;
+  const sH = new Date(win.start).getHours();
+  const eH = new Date(win.end).getHours();
+  const hourRange = sH === eH ? `${sH}h` : `${sH}h → ${eH}h`;
+  const [cls, label] = sessionTag(p.score, spot.priority);
+  const light = p.light >= 9 ? ' · ☀️ golden hour' : '';
+  return `<div class="session">
+    <div class="score-box" style="background:${scoreColor(p.score)}">
+      <span class="n">${p.score}</span><span class="o">/10</span>
+    </div>
+    <div class="info">
+      <span class="tag ${cls}">${label}</span>
+      <div class="where">${spot.name}</div>
+      <div class="when"><b>${whenLabel(win.start, joursFr)}</b> · ${hourRange}
+        <span style="color:var(--text-dim)">(pic ${new Date(p.time).getHours()}h)</span></div>
+      <div class="cond">🌊 ${p.wave_h}m ${p.wave_p}s ${p.swell_label} ·
+        💨 ${p.wind_spd}km/h ${p.wind_label} ${p.offshore ? '✅' : '⚠️ onshore'}${light}</div>
+    </div>
+  </div>`;
+}
+
+function renderSummary() {
+  const all = [];
+  for (const spot of DATA.spots) {
+    for (const win of findWindows(spot.hours, threshold)) {
+      all.push({ spot, win });
+    }
+  }
+  // Tri chronologique : la prochaine bonne session d'abord
+  all.sort((a, b) => new Date(a.win.start) - new Date(b.win.start));
+
+  const el = document.getElementById('summary');
+  if (all.length) {
+    el.innerHTML = `<div class="section-title">${all.length} créneau${all.length>1?'x':''} trouvé${all.length>1?'s':''}</div>`
+      + all.map(({spot, win}) => sessionCard(spot, win, DATA.jours_fr)).join('');
+  } else {
+    // Aucun créneau au seuil : on montre quand même le meilleur à venir
+    const tops = DATA.spots.map(s => ({ spot: s, h: bestHour(s.hours) }))
+      .filter(x => x.h).sort((a,b) => b.h.score - a.h.score).slice(0, 3);
+    el.innerHTML = `<div class="empty">😴 Aucune session ≥ ${threshold} dans les 5 prochains jours.<br>
+      <span style="font-size:0.8rem">Les meilleurs créneaux malgré tout :</span></div>`
+      + tops.map(({spot, h}) =>
+          sessionCard(spot, { start: h.time, end: h.time, peak: h }, DATA.jours_fr)).join('');
+  }
+}
+
+function groupByDay(hours) {
+  const days = {};
+  for (const h of hours) (days[h.time.slice(0,10)] = days[h.time.slice(0,10)] || []).push(h);
+  return days;
+}
+
+function renderDetail() {
+  const el = document.getElementById('detail');
+  const legend = `<div class="legend">
+    <span><i class="dot" style="background:var(--c-red)"></i>&lt;4</span>
+    <span><i class="dot" style="background:var(--c-low)"></i>4–6</span>
+    <span><i class="dot" style="background:var(--c-mid)"></i>6–7.5</span>
+    <span><i class="dot" style="background:var(--c-good)"></i>≥7.5</span>
+    <span><i class="dot" style="background:var(--c-fire)"></i>≥8.5</span></div>`;
+
+  el.innerHTML = legend + DATA.spots.map(spot => {
+    const fire = spot.priority === 'fire' ? '<span class="badge-fire">FIRE</span>' : '';
+    const days = groupByDay(spot.hours);
+    const rows = Object.keys(days).sort().map(key => {
+      const slot = days[key].filter(h => { const hr = new Date(h.time).getHours(); return hr >= 6 && hr <= 21; });
+      const cells = slot.map(h => {
+        const hr = new Date(h.time).getHours();
+        const below = h.score < threshold;
+        const color = h.daytime ? scoreColor(h.score) : 'var(--bg-cell)';
+        const cls = !h.daytime ? 'night' : (below ? 'dim' : '');
+        const tip = `${hr}h · ${h.score}/10\n${h.wave_h}m ${h.wave_p}s ${h.swell_label}\n💨 ${h.wind_spd}km/h ${h.wind_label} ${h.offshore?'offshore':'onshore'}\n☁️ ${h.cloud}%`;
+        return `<div class="cell ${cls}" style="background:${color}" data-tip="${tip}">
+          <span class="h">${hr}h</span><span class="sc">${h.score>=4?h.score:''}</span></div>`;
+      }).join('');
+      return `<div class="day"><div class="day-label">${whenLabel(key, DATA.jours_fr)}</div>
+        <div class="timeline">${cells}</div></div>`;
+    }).join('');
+    return `<div class="spot"><div class="spot-head"><span class="spot-name">${spot.name}</span>${fire}</div>${rows}</div>`;
+  }).join('');
+}
+
+function rerender() { renderSummary(); renderDetail(); }
+
+function init(data) {
+  DATA = data;
+  const upd = new Date(data.generated_at);
+  document.getElementById('updated').textContent =
+    'Mis à jour le ' + upd.toLocaleDateString('fr-FR') + ' à ' +
+    upd.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+
+  document.querySelectorAll('#filters button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#filters button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      threshold = parseFloat(btn.dataset.th);
+      rerender();
+    });
+  });
+
+  document.getElementById('toggle').addEventListener('click', () => {
+    const d = document.getElementById('detail');
+    d.classList.toggle('hidden');
+    document.getElementById('toggle').textContent = d.classList.contains('hidden')
+      ? '📊 Voir le détail heure par heure ▼' : '📊 Masquer le détail ▲';
+  });
+
+  rerender();
+}
+
+fetch('data.json?t=' + Date.now())
+  .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+  .then(init)
+  .catch(err => {
+    document.getElementById('summary').innerHTML =
+      `<div class="error">⚠️ Impossible de charger data.json (${err.message}).<br>
+       Lance le serveur : <code>python3 serve.py</code></div>`;
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+# Secrets — ne JAMAIS publier
+.env
+
+# Données générées (regénérées automatiquement par GitHub Actions)
+data.json
+
+# Config locale Claude Code (propre à ta machine)
+.claude/settings.local.json
+
+# Logs & fichiers système
+surfalert.log
+__pycache__/
+*.pyc
+.DS_Store

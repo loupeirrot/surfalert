@@ -1,0 +1,58 @@
+name: Déployer SurfAlert
+
+# Quand le site se met à jour :
+on:
+  schedule:
+    - cron: "0 5 * * *"   # tous les jours ~7h (heure de Paris l'été, 6h l'hiver)
+  push:
+    branches: [main]      # à chaque modification du code
+  workflow_dispatch:       # bouton "Run workflow" manuel
+
+# Permissions nécessaires pour publier sur GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Une seule publication à la fois
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v4
+
+      - name: Installer Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Installer les dépendances
+        run: pip install requests astral pytz
+
+      - name: Générer les données de surf
+        run: python generate_data.py
+
+      - name: Préparer le site
+        run: |
+          mkdir -p _site
+          cp index.html data.json _site/
+
+      - name: Configurer Pages
+        uses: actions/configure-pages@v5
+
+      - name: Envoyer le site
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Déployer sur GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

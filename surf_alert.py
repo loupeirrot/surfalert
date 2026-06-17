@@ -1,0 +1,376 @@
+#!/usr/bin/env python3
+"""
+🌊 SurfAlert — La Nord · La Gravière · Les Estagnots · Santocha · La Piste
+Analyse les conditions de surf et envoie des alertes Telegram.
+"""
+
+import os
+import requests
+from datetime import datetime, timedelta
+import pytz
+from astral import LocationInfo
+from astral.sun import sun
+
+JOURS_FR = ["lundi","mardi","mercredi","jeudi","vendredi","samedi","dimanche"]
+
+def jour_fr(dt):
+    return JOURS_FR[dt.weekday()]
+
+# ──────────────────────────────────────────
+# CONFIGURATION
+# ──────────────────────────────────────────
+def _load_env_file():
+    """Charge un fichier .env local (clé=valeur) s'il existe — sans dépendance externe.
+    Le .env n'est jamais publié (il est dans .gitignore)."""
+    env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+    if os.path.exists(env_path):
+        with open(env_path, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                key, _, val = line.partition("=")
+                os.environ.setdefault(key.strip(), val.strip())
+
+_load_env_file()
+
+# Secrets lus depuis l'environnement / le fichier .env — jamais en dur dans le code.
+TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN", "")
+CHAT_ID = os.environ.get("CHAT_ID", "")
+ALERT_THRESHOLD = 7.5      # En dessous : silence total
+ALERT_FIRE     = 8.5       # Score "session pro" sur spots prioritaires (vibration)
+FORECAST_HOURS = 120       # Fenêtre d'analyse (5 jours)
+
+# Chaque spot a ses paramètres propres :
+#   swell_opt  : direction de houle idéale (degrés)
+#   swell_tol  : tolérance angulaire (±°) avant pénalité
+#   h_ideal    : plage de hauteur idéale pour filmer (min, max en mètres)
+#   priority   : "fire" = alerte urgente possible | "standard"
+SPOTS = {
+    "🔥 La Nord (Hossegor)": {
+        "lat": 43.6750, "lon": -1.4380,
+        "swell_opt": 215, "swell_tol": 25,   # SO, canalisé par le Gouf
+        "h_ideal": (1.5, 4.0),
+        "priority": "fire",
+    },
+    "🏖 La Gravière (Hossegor)": {
+        "lat": 43.6673, "lon": -1.4347,
+        "swell_opt": 220, "swell_tol": 25,   # SO
+        "h_ideal": (1.5, 3.5),
+        "priority": "fire",
+    },
+    "🏄 Les Estagnots (Seignosse)": {
+        "lat": 43.7045, "lon": -1.4289,
+        "swell_opt": 240, "swell_tol": 30,   # O/SO
+        "h_ideal": (1.2, 3.5),
+        "priority": "standard",
+    },
+    "🌊 Santocha (Capbreton)": {
+        "lat": 43.6464, "lon": -1.4452,
+        "swell_opt": 255, "swell_tol": 35,   # O, filtré par le Gouf
+        "h_ideal": (0.8, 2.5),               # fonctionne plus petit
+        "priority": "standard",
+    },
+    "🏴 La Piste (Capbreton)": {
+        "lat": 43.6380, "lon": -1.4460,
+        "swell_opt": 250, "swell_tol": 35,   # O/SO
+        "h_ideal": (1.0, 3.0),
+        "priority": "standard",
+    },
+}
+
+TZ = pytz.timezone("Europe/Paris")
+
+# ──────────────────────────────────────────
+# FETCH DATA
+# ──────────────────────────────────────────
+def fetch_marine(lat, lon):
+    r = requests.get("https://marine-api.open-meteo.com/v1/marine", params={
+        "latitude": lat, "longitude": lon,
+        "hourly": "wave_height,wave_period,wave_direction,"
+                  "swell_wave_height,swell_wave_period,swell_wave_direction",
+        "timezone": "Europe/Paris",
+        "forecast_days": 3,
+    }, timeout=10)
+    r.raise_for_status()
+    return r.json()
+
+def fetch_weather(lat, lon):
+    r = requests.get("https://api.open-meteo.com/v1/forecast", params={
+        "latitude": lat, "longitude": lon,
+        "hourly": "wind_speed_10m,wind_direction_10m,weather_code,cloud_cover",
+        "timezone": "Europe/Paris",
+        "forecast_days": 3,
+        "wind_speed_unit": "kmh",
+    }, timeout=10)
+    r.raise_for_status()
+    return r.json()
+
+# ──────────────────────────────────────────
+# HELPERS
+# ──────────────────────────────────────────
+def get_sun_times(lat, lon, date):
+    loc = LocationInfo(latitude=lat, longitude=lon)
+    s = sun(loc.observer, date=date, tzinfo=TZ)
+    return s["sunrise"], s["sunset"]
+
+def dir_label(deg):
+    dirs = ["N","NE","E","SE","S","SO","O","NO"]
+    return dirs[round(deg / 45) % 8]
+
+def is_offshore(wind_dir):
+    """Vent de terre pour Hossegor/Capbreton = Est (60-150°)"""
+    return 50 <= wind_dir <= 160
+
+# ──────────────────────────────────────────
+# SCORING
+# ──────────────────────────────────────────
+def score_height(h, h_min, h_max):
+    """Score adapté à la plage idéale de hauteur du spot."""
+    if h < h_min * 0.5:  return 0.0
+    if h < h_min:        return 3.0 + (h - h_min * 0.5) / (h_min * 0.5) * 3.0
+    if h <= h_max:       return 8.0 + (h - h_min) / (h_max - h_min) * 2.0
+    overshoot = h - h_max
+    return max(0.0, 10.0 - overshoot * 2.5)
+
+def score_period(p):
+    if p < 8:  return 0.0
+    if p < 10: return 3.0
+    if p < 12: return 6.0
+    if p < 14: return 8.5
+    return 10.0
+
+def score_direction(d, opt, tol):
+    """Score de direction calé sur l'optimum du spot."""
+    diff = min(abs(d - opt), 360 - abs(d - opt))
+    if diff <= tol:        return 10.0
+    if diff <= tol * 1.8:  return 7.0
+    if diff <= tol * 3.0:  return 3.5
+    if diff <= tol * 4.5:  return 1.5
+    return 0.0
+
+def score_wind(speed, direction):
+    if is_offshore(direction):
+        if speed < 10: return 10.0
+        if speed < 20: return 8.0
+        if speed < 30: return 5.0
+        return 2.0
+    else:
+        if speed < 5:  return 6.0   # calme = acceptable
+        if speed < 12: return 3.0
+        if speed < 20: return 1.0
+        return 0.0
+
+def score_light(hour_dec, sunrise_h, sunset_h):
+    golden_am_end = sunrise_h + 2.0
+    golden_pm_start = sunset_h - 2.0
+    if sunrise_h - 0.25 <= hour_dec <= golden_am_end:  return 10.0  # golden morning
+    if golden_pm_start <= hour_dec <= sunset_h + 0.25: return 10.0  # golden evening
+    if hour_dec < sunrise_h or hour_dec > sunset_h:    return 0.0   # nuit
+    return 5.0  # lumière neutre
+
+def score_cloud(cover):
+    if cover < 20:  return 10.0
+    if cover < 50:  return 7.0
+    if cover < 75:  return 4.0
+    return 1.0
+
+def compute_score(wave_h, wave_p, swell_dir, wind_speed, wind_dir,
+                  hour_dec, sunrise_h, sunset_h, cloud,
+                  h_ideal, swell_opt, swell_tol):
+    h_min, h_max = h_ideal
+    s = {
+        "Houle":     score_height(wave_h, h_min, h_max),
+        "Période":   score_period(wave_p),
+        "Direction": score_direction(swell_dir, swell_opt, swell_tol),
+        "Vent":      score_wind(wind_speed, wind_dir),
+        "Lumière":   score_light(hour_dec, sunrise_h, sunset_h),
+        "Ciel":      score_cloud(cloud),
+    }
+    w = {"Houle": 0.28, "Période": 0.22, "Direction": 0.20,
+         "Vent": 0.18, "Lumière": 0.08, "Ciel": 0.04}
+    total = sum(s[k] * w[k] for k in s)
+    return round(total, 1), s
+
+# ──────────────────────────────────────────
+# ANALYSE
+# ──────────────────────────────────────────
+def analyze_spot(spot_name, spot_cfg):
+    lat, lon = spot_cfg["lat"], spot_cfg["lon"]
+    marine  = fetch_marine(lat, lon)
+    weather = fetch_weather(lat, lon)
+
+    now = datetime.now(TZ)
+    today = now.date()
+    sunrise, sunset = get_sun_times(lat, lon, today)
+    sr_h = sunrise.hour + sunrise.minute / 60
+    ss_h = sunset.hour + sunset.minute / 60
+
+    times   = marine["hourly"]["time"]
+    results = []
+
+    for i, ts in enumerate(times):
+        dt = datetime.fromisoformat(ts).replace(tzinfo=TZ)
+        if dt < now:
+            continue
+        if (dt - now).total_seconds() > FORECAST_HOURS * 3600:
+            break
+
+        wave_h    = marine["hourly"]["wave_height"][i]    or 0
+        wave_p    = marine["hourly"]["wave_period"][i]    or 0
+        swell_dir = marine["hourly"]["swell_wave_direction"][i] or 0
+        wind_spd  = weather["hourly"]["wind_speed_10m"][i]   or 0
+        wind_dir  = weather["hourly"]["wind_direction_10m"][i] or 0
+        cloud     = weather["hourly"]["cloud_cover"][i]   or 0
+
+        hour_dec = dt.hour + dt.minute / 60
+        score, breakdown = compute_score(
+            wave_h, wave_p, swell_dir,
+            wind_spd, wind_dir,
+            hour_dec, sr_h, ss_h, cloud,
+            spot_cfg["h_ideal"], spot_cfg["swell_opt"], spot_cfg["swell_tol"],
+        )
+
+        results.append({
+            "dt": dt, "score": score, "breakdown": breakdown,
+            "wave_h": wave_h, "wave_p": wave_p,
+            "swell_dir": swell_dir, "swell_dir_label": dir_label(swell_dir),
+            "wind_spd": wind_spd, "wind_dir": wind_dir,
+            "wind_label": dir_label(wind_dir),
+            "offshore": is_offshore(wind_dir),
+            "cloud": cloud,
+            "sunrise_h": sr_h, "sunset_h": ss_h,
+        })
+
+    return results
+
+# ──────────────────────────────────────────
+# MESSAGE TELEGRAM
+# ──────────────────────────────────────────
+def score_bar(s):
+    filled = round(s)
+    return "█" * filled + "░" * (10 - filled)
+
+def find_best_window(results):
+    """Trouve la meilleure fenêtre continue ≥ ALERT_THRESHOLD."""
+    good = [r for r in results if r["score"] >= ALERT_THRESHOLD]
+    if not good:
+        return None, []
+    best = max(good, key=lambda x: x["score"])
+    # Fenêtre de ±2h autour du pic
+    window = [r for r in good
+              if abs((r["dt"] - best["dt"]).total_seconds()) <= 7200]
+    return best, window
+
+def build_alert(spot_name, spot_cfg, results):
+    """Retourne (message, is_fire) ou (None, False) si pas assez bon."""
+    best, window = find_best_window(results)
+    if not best:
+        return None, False
+
+    is_fire = best["score"] >= ALERT_FIRE and spot_cfg["priority"] == "fire"
+
+    # Quand
+    now = datetime.now(TZ)
+    delta = best["dt"] - now
+    hours_away = delta.total_seconds() / 3600
+    days_away  = int(hours_away // 24)
+
+    if hours_away < 2:
+        quand    = "maintenant"
+        urgence  = ""
+    elif hours_away < 24:
+        quand    = f"aujourd'hui à {best['dt'].strftime('%Hh')}"
+        urgence  = f"  ⏱ dans {int(hours_away)}h"
+    elif days_away == 1:
+        quand    = f"demain à {best['dt'].strftime('%Hh')}"
+        urgence  = "  ⏱ J-1"
+    elif days_away == 2:
+        quand    = f"après-demain ({jour_fr(best['dt'])}) à {best['dt'].strftime('%Hh')}"
+        urgence  = "  ⏱ J-2"
+    else:
+        quand    = f"{jour_fr(best['dt'])} {best['dt'].strftime('%d/%m')} à {best['dt'].strftime('%Hh')}"
+        urgence  = f"  ⏱ J-{days_away}"
+
+    # Header
+    if is_fire:
+        header = f"🚨 SESSION PRO — {spot_name}"
+    else:
+        header = f"📸 GO FILMER — {spot_name}"
+
+    # Durée de la fenêtre
+    if len(window) >= 2:
+        t_start = window[0]["dt"].strftime("%Hh")
+        t_end   = window[-1]["dt"].strftime("%Hh")
+        fenetre = f"{t_start}–{t_end}"
+    else:
+        fenetre = best["dt"].strftime("%Hh")
+
+    wind_info = (f"{best['wind_spd']:.0f}km/h {best['wind_label']}"
+                 f"{' ✅' if best['offshore'] else ' ⚠️ onshore'}")
+
+    msg  = f"{header}\n"
+    msg += f"{'─' * 28}\n"
+    msg += f"📅 <b>{quand.capitalize()}</b>{urgence}\n"
+    msg += f"🕐 Fenêtre : {fenetre}\n"
+    msg += f"⭐ Score : <b>{best['score']}/10</b>  {score_bar(best['score'])}\n\n"
+    msg += f"🌊 <b>{best['wave_h']:.1f}m</b> · {best['wave_p']:.0f}s · {best['swell_dir_label']} {best['swell_dir']:.0f}°\n"
+    msg += f"💨 {wind_info}\n"
+    msg += f"📸 Lumière : {best['breakdown']['Lumière']:.0f}/10"
+    if best['breakdown']['Lumière'] >= 9:
+        msg += "  ← golden hour ✨"
+    msg += "\n"
+    msg += f"☁️  Ciel : {best['cloud']}%\n"
+
+    return msg, is_fire
+
+# ──────────────────────────────────────────
+# TELEGRAM
+# ──────────────────────────────────────────
+def send(text, disable_notification=False):
+    if not TELEGRAM_TOKEN or not CHAT_ID:
+        raise SystemExit("❌ TELEGRAM_TOKEN / CHAT_ID manquants. "
+                         "Crée un fichier .env à côté du script (voir .env.example).")
+    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+    r = requests.post(url, json={
+        "chat_id": CHAT_ID,
+        "text": text,
+        "parse_mode": "HTML",
+        "disable_notification": disable_notification,
+    }, timeout=10)
+    return r.json()
+
+# ──────────────────────────────────────────
+# MAIN
+# ──────────────────────────────────────────
+def run():
+    now = datetime.now(TZ)
+    print(f"[{now.strftime('%H:%M')}] SurfAlert démarré...")
+
+    alerts = []   # (score, msg, is_fire, spot_name)
+
+    for spot_name, spot_cfg in SPOTS.items():
+        try:
+            print(f"  → Analyse {spot_name}...")
+            results = analyze_spot(spot_name, spot_cfg)
+            msg, is_fire = build_alert(spot_name, spot_cfg, results)
+            if msg:
+                best_score = max(r["score"] for r in results)
+                alerts.append((best_score, msg, is_fire, spot_name))
+        except Exception as e:
+            print(f"  ❌ Erreur sur {spot_name}: {e}")
+
+    if not alerts:
+        # Silence total — pas de message parasite
+        print("  → Rien d'intéressant dans les 72h. Aucun message envoyé.")
+        return
+
+    # Trie par score décroissant et envoie
+    alerts.sort(reverse=True)
+    for score, msg, is_fire, spot_name in alerts:
+        send(msg, disable_notification=not is_fire)
+        print(f"  ✅ Alerte envoyée : {spot_name} ({score}/10)")
+
+
+if __name__ == "__main__":
+    run()
