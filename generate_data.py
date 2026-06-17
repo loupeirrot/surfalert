@@ -117,13 +117,22 @@ def analyze_spot(spot_cfg):
 ZONE_LAT, ZONE_LON = 43.66, -1.44
 
 def fetch_tides():
-    r = requests.get("https://marine-api.open-meteo.com/v1/marine", params={
-        "latitude": ZONE_LAT, "longitude": ZONE_LON,
-        "hourly": "sea_level_height_msl",
-        "timezone": "Europe/Paris",
-        "forecast_days": FORECAST_DAYS,
-    }, timeout=15)
-    r.raise_for_status()
+    last_err = None
+    for attempt in range(3):
+        try:
+            r = requests.get("https://marine-api.open-meteo.com/v1/marine", params={
+                "latitude": ZONE_LAT, "longitude": ZONE_LON,
+                "hourly": "sea_level_height_msl",
+                "timezone": "Europe/Paris",
+                "forecast_days": FORECAST_DAYS,
+            }, timeout=30)
+            r.raise_for_status()
+            break
+        except Exception as e:
+            last_err = e
+            print(f"  ⏳ marées : tentative {attempt + 1}/3 échouée ({e})")
+    else:
+        raise last_err
     j = r.json()
     times = j["hourly"]["time"]
     h = j["hourly"]["sea_level_height_msl"]
