@@ -120,7 +120,7 @@
 <div class="blob a"></div><div class="blob b"></div><div class="blob c"></div>
 
 <div class="banner">
-  <img src="assets/wave.webp" alt="Vague de la côte landaise au lever du jour">
+  <img id="banner-img" src="assets/wave-golden.webp" alt="Conditions de surf sur la côte landaise">
   <div class="fade"></div>
   <div class="title">
     <h1>🌊 SurfAlert</h1>
@@ -160,6 +160,31 @@ function grad(s) {
 function solid(s) {
   if (s >= PRO) return '#ff9a5c'; if (s >= GO) return '#4fe0c0';
   if (s >= 6) return '#ffce6a'; if (s >= 4) return '#7fb4e6'; return '#9a93b8';
+}
+// Bandeau adapté aux conditions de l'instant : on prend l'heure la plus proche de
+// maintenant, sur le spot qui marche le mieux à cet instant, et on choisit l'image.
+function currentEntry(data) {
+  const now = Date.now(); let best = null;
+  for (const spot of data.spots) {
+    if (!spot.hours.length) continue;
+    const h = spot.hours.reduce((a, b) =>
+      Math.abs(new Date(b.time) - now) < Math.abs(new Date(a.time) - now) ? b : a);
+    if (!best || h.score > best.score) best = h;
+  }
+  return best;
+}
+function pickBanner(h) {
+  if (!h) return 'wave-golden';
+  if (!h.daytime) return 'wave-night';                       // nuit / avant l'aube
+  if (!h.offshore && h.score < 5) return 'wave-messy';        // onshore et médiocre
+  if (h.light >= 9 && h.score >= 6) return 'wave-golden';     // golden hour + ça marche
+  if (h.score >= 8) return 'wave-epic';                       // gros et puissant
+  if (h.score >= 6) return 'wave-clean';                      // propre et surfable
+  return 'wave-flat';                                         // petit / plat
+}
+function setBanner(data) {
+  const img = document.getElementById('banner-img');
+  if (img) img.src = 'assets/' + pickBanner(currentEntry(data)) + '.webp';
 }
 function whenLabel(dateStr, joursFr) {
   const d = new Date(dateStr), today = new Date(); today.setHours(0,0,0,0);
@@ -274,6 +299,7 @@ function renderDetail() {
 function rerender() { renderSummary(); renderDetail(); }
 function init(data) {
   DATA = data;
+  setBanner(data);
   const upd = new Date(data.generated_at);
   document.getElementById('updated').textContent = 'mis à jour le ' + upd.toLocaleDateString('fr-FR')
     + ' à ' + upd.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
