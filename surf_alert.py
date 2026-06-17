@@ -187,8 +187,10 @@ def compute_score(wave_h, wave_p, swell_dir, wind_speed, wind_dir,
         "Lumière":   score_light(hour_dec, sunrise_h, sunset_h),
         "Ciel":      score_cloud(cloud),
     }
-    w = {"Houle": 0.28, "Période": 0.22, "Direction": 0.20,
-         "Vent": 0.18, "Lumière": 0.08, "Ciel": 0.04}
+    # Score 100% surf : lumière et ciel ne comptent plus dans la note.
+    # (Ils restent calculés et exposés à part, pour juger les conditions de shooting.)
+    w = {"Houle": 0.32, "Période": 0.25, "Direction": 0.23, "Vent": 0.20,
+         "Lumière": 0.0, "Ciel": 0.0}
     total = sum(s[k] * w[k] for k in s)
     return round(total, 1), s
 
