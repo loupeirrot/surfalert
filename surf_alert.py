@@ -54,11 +54,13 @@ SPOTS = {
         "region": "Landes", "lat": 43.6750, "lon": -1.4380,
         "swell_opt": 215, "swell_tol": 25,   # SO, canalisé par le Gouf
         "h_ideal": (1.5, 4.0), "priority": "fire",
+        "webcam": "https://gosurf.fr/webcam/fr/170/Hossegor-Plage-de-la-Nord",
     },
     "🏖 La Gravière (Hossegor)": {
         "region": "Landes", "lat": 43.6673, "lon": -1.4347,
         "swell_opt": 220, "swell_tol": 25,   # SO
         "h_ideal": (1.5, 3.5), "priority": "fire",
+        "webcam": "https://gosurf.fr/webcam/fr/21/Hossegor-La-Centrale",
     },
     "🏄 Les Estagnots (Seignosse)": {
         "region": "Landes", "lat": 43.7045, "lon": -1.4289,
@@ -70,17 +72,20 @@ SPOTS = {
         "region": "Landes", "lat": 43.6464, "lon": -1.4452,
         "swell_opt": 255, "swell_tol": 35,   # O, filtré par le Gouf
         "h_ideal": (0.8, 2.5), "priority": "standard",
+        "webcam": "https://gosurf.fr/webcam/fr/83/Capbreton-Plage-du-Santosha-de-La-Piste",
     },
     "🏴 La Piste (Capbreton)": {
         "region": "Landes", "lat": 43.6380, "lon": -1.4460,
         "swell_opt": 250, "swell_tol": 35,   # O/SO
         "h_ideal": (1.0, 3.0), "priority": "standard",
+        "webcam": "https://gosurf.fr/webcam/fr/83/Capbreton-Plage-du-Santosha-de-La-Piste",
     },
     # ───────── Pays Basque ─────────
     "🏄 Côte des Basques (Biarritz)": {
         "region": "Pays Basque", "lat": 43.4793, "lon": -1.5658,
         "swell_opt": 290, "swell_tol": 40,   # O/NO, marche petit
         "h_ideal": (0.8, 2.5), "priority": "standard",
+        "webcam": "https://gosurf.fr/webcam/fr/7/Biarritz-La-Cote-des-Basques",
     },
     "🌊 Les Cavaliers (Anglet)": {
         "region": "Pays Basque", "lat": 43.5269, "lon": -1.5266,
@@ -92,12 +97,14 @@ SPOTS = {
         "region": "Pays Basque", "lat": 43.3760, "lon": -1.7790,
         "swell_opt": 300, "swell_tol": 40,   # abrité, demande de la taille
         "h_ideal": (0.8, 2.5), "priority": "standard",
+        "webcam": "https://gosurf.fr/webcam/fr/8/Hendaye-Plage-du-Casino-et-des-Jumeaux",
     },
     # ───────── Gironde ─────────
     "🏄 Lacanau Océan": {
         "region": "Gironde", "lat": 44.9772, "lon": -1.2050,
         "swell_opt": 270, "swell_tol": 40,
         "h_ideal": (1.0, 3.0), "priority": "standard",
+        "webcam": "https://gosurf.fr/webcam/fr/9/Lacanau-Plage-de-Lacanau-Ocean",
     },
     "🌊 Le Porge Océan": {
         "region": "Gironde", "lat": 44.8722, "lon": -1.2030,
@@ -114,6 +121,7 @@ SPOTS = {
         "region": "Vendée", "lat": 46.8350, "lon": -1.9120,
         "swell_opt": 270, "swell_tol": 45,
         "h_ideal": (1.0, 3.0), "priority": "standard",
+        "webcam": "https://gosurf.fr/webcam/fr/146/Bretignolles-Sur-Mer-Plage-de-La-Sauzaie",
     },
     "🏄 Les Conches (Longeville)": {
         "region": "Vendée", "lat": 46.4150, "lon": -1.5000,
