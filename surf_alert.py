@@ -110,11 +110,13 @@ SPOTS = {
         "region": "Gironde", "lat": 44.8722, "lon": -1.2030,
         "swell_opt": 270, "swell_tol": 40,
         "h_ideal": (1.0, 3.0), "priority": "standard",
+        "webcam": "https://www.skaping.com/medoc-plein-sud/le-porge-ocean/live",
     },
     "🏖 Cap Ferret": {
         "region": "Gironde", "lat": 44.6300, "lon": -1.2520,
         "swell_opt": 265, "swell_tol": 40,
         "h_ideal": (1.0, 3.0), "priority": "standard",
+        "webcam": "https://www.surf-report.com/webcams/cap-ferret-s1010.html",
     },
     # ───────── Vendée ─────────
     "🌊 La Sauzaie (Brétignolles)": {
@@ -127,17 +129,20 @@ SPOTS = {
         "region": "Vendée", "lat": 46.4150, "lon": -1.5000,
         "swell_opt": 250, "swell_tol": 45,
         "h_ideal": (1.0, 3.0), "priority": "standard",
+        "webcam": "https://viewsurf.com/univers/surf/vue/18682-france-pays-de-la-loire-longeville-sur-mer-bud-bud",
     },
     # ───────── Finistère ─────────
     "🔥 La Torche": {
         "region": "Finistère", "lat": 47.8370, "lon": -4.3490,
         "swell_opt": 270, "swell_tol": 45,   # très exposé
         "h_ideal": (1.0, 3.5), "priority": "fire",
+        "webcam": "https://www.winds-up.com/spot-la-torche-windsurf-kitesurf-50-webcam-live.html",
     },
     "🌊 La Palue (Crozon)": {
         "region": "Finistère", "lat": 48.2240, "lon": -4.5660,
         "swell_opt": 280, "swell_tol": 40,   # beach break costaud
         "h_ideal": (1.2, 3.5), "priority": "standard",
+        "webcam": "https://www.surf-report.com/webcams/la-palue-s1038.html",
     },
 }
 
