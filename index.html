@@ -141,13 +141,6 @@
   <div class="filters" id="myspots-bar" style="margin-bottom:14px"></div>
   <div class="card" id="spots-panel" style="padding:8px 10px;margin-bottom:20px;display:none"></div>
 
-  <div class="filters" id="filters">
-    <button data-th="0">tout voir</button>
-    <button data-th="6">🆗 ≥6</button>
-    <button data-th="7.5" class="active">🤙 à l'eau</button>
-    <button data-th="8.5">🔥 ça envoie</button>
-  </div>
-
   <div id="summary"></div>
 
   <button class="toggle" id="toggle">voir le détail heure par heure ↓</button>
@@ -347,6 +340,13 @@ function findWindows(hours, th) {
 }
 function bestHour(hours) { const d = hours.filter(h => h.daytime && isFuture(h));
   return d.length ? d.reduce((a,b) => b.score > a.score ? b : a) : null; }
+// Meilleur créneau à venir d'un spot (fenêtre exploitable, sinon le meilleur moment).
+function spotBest(spot) {
+  const wins = findWindows(spot.hours, 4);
+  if (wins.length) return wins.reduce((a, b) => b.peak.score > a.peak.score ? b : a);
+  const h = bestHour(spot.hours);
+  return h ? { start: h.time, end: h.time, peak: h } : null;
+}
 // Verdict go/no-go — l'arme n°1. Seuils : GO ≥6.5 · BOF 4.5–6.5 · NON <4.5
 function verdict(s) {
   if (s >= 6.5) return { label: 'GO',  emoji: '🟢', color: '#34e89e' };
@@ -421,26 +421,18 @@ function sessionCard(spot, win, joursFr) {
     </div></div>`;
 }
 function renderSummary() {
-  const all = [];
-  for (const spot of activeSpots())
-    for (const win of findWindows(spot.hours, threshold)) all.push({ spot, win });
   const el = document.getElementById('summary');
+  // Meilleur créneau à venir de chaque spot actif, classé du meilleur au moins bon.
+  const all = activeSpots().map(spot => ({ spot, win: spotBest(spot) })).filter(x => x.win);
   if (!all.length) {
-    const tops = activeSpots().map(s => ({ spot: s, h: bestHour(s.hours) }))
-      .filter(x => x.h).sort((a,b) => b.h.score - a.h.score).slice(0, 4);
-    const [first, ...rest] = tops;
-    el.innerHTML = `<div class="card empty">😴 aucune session ≥ ${threshold} dans les 5 prochains jours.<br>
-      <span style="font-size:0.8rem">voici les meilleurs moments malgré tout :</span></div>`
-      + (first ? `<div class="label">le meilleur créneau</div>` + heroCard(first.spot, { start: first.h.time, end: first.h.time, peak: first.h }, DATA.jours_fr) : '')
-      + (rest.length ? `<div class="label">autres options</div>` + rest.map(({spot, h}) =>
-          sessionCard(spot, { start: h.time, end: h.time, peak: h }, DATA.jours_fr)).join('') : '');
+    el.innerHTML = `<div class="card empty">😴 pas de prévision exploitable pour le moment.</div>`;
     return;
   }
-  const hero = all.reduce((a, b) => b.win.peak.score > a.win.peak.score ? b : a);
-  const rest = all.filter(x => x !== hero).sort((a, b) => new Date(a.win.start) - new Date(b.win.start));
-  el.innerHTML = `<div class="label">ta meilleure session</div>`
+  all.sort((a, b) => b.win.peak.score - a.win.peak.score);
+  const [hero, ...rest] = all;
+  el.innerHTML = `<div class="label">le meilleur créneau à venir</div>`
     + heroCard(hero.spot, hero.win, DATA.jours_fr)
-    + (rest.length ? `<div class="label">les autres créneaux</div>`
+    + (rest.length ? `<div class="label">les autres spots</div>`
         + rest.map(({spot, win}) => sessionCard(spot, win, DATA.jours_fr)).join('') : '');
 }
 function groupByDay(hours) { const d = {};
@@ -459,9 +451,9 @@ function renderDetail() {
     const rows = Object.keys(days).sort().map(key => {
       const slot = days[key].filter(h => { const hr = new Date(h.time).getHours(); return hr >= 6 && hr <= 21; });
       const cells = slot.map(h => {
-        const hr = new Date(h.time).getHours(), below = h.score < threshold;
+        const hr = new Date(h.time).getHours();
         const bg = h.daytime ? grad(h.score) : 'rgba(255,255,255,0.06)';
-        const cls = !h.daytime ? 'night' : (below ? 'dim' : '');
+        const cls = h.daytime ? '' : 'night';
         const tip = `${hr}h · ${h.score}/10\n${h.wave_h}m ${h.wave_p}s ${h.swell_label}\n💨 ${h.wind_spd}km/h ${h.wind_label} ${h.offshore?'offshore':'onshore'}\n☁️ ${h.cloud}%`;
         return `<div class="cell ${cls}" style="background:${bg}" data-tip="${tip}">
           <span class="h">${hr}h</span><span class="sc">${h.score>=4?h.score:''}</span></div>`;
@@ -483,10 +475,6 @@ function init(data) {
   const upd = new Date(data.generated_at);
   document.getElementById('updated').textContent = 'mis à jour le ' + upd.toLocaleDateString('fr-FR')
     + ' à ' + upd.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-  document.querySelectorAll('#filters button').forEach(btn => btn.addEventListener('click', () => {
-    document.querySelectorAll('#filters button').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active'); threshold = parseFloat(btn.dataset.th); rerender();
-  }));
   document.getElementById('toggle').addEventListener('click', () => {
     const d = document.getElementById('detail'); d.classList.toggle('hidden');
     document.getElementById('toggle').textContent = d.classList.contains('hidden')
