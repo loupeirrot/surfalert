@@ -240,6 +240,7 @@ def main():
                 "lat": spot_cfg["lat"],
                 "lon": spot_cfg["lon"],
                 "h_ideal": spot_cfg["h_ideal"],
+                "webcam": spot_cfg.get("webcam", ""),
                 "hours": hours,
             })
         except Exception as e:

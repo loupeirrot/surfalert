@@ -64,6 +64,7 @@ SPOTS = {
         "region": "Landes", "lat": 43.7045, "lon": -1.4289,
         "swell_opt": 240, "swell_tol": 30,   # O/SO
         "h_ideal": (1.2, 3.5), "priority": "standard",
+        "webcam": "https://gosurf.fr/webcam/fr/79/Seignosse-Plage-des-Bourdaines-Plage-des-Estagnots",
     },
     "🌊 Santocha (Capbreton)": {
         "region": "Landes", "lat": 43.6464, "lon": -1.4452,
@@ -85,6 +86,7 @@ SPOTS = {
         "region": "Pays Basque", "lat": 43.5269, "lon": -1.5266,
         "swell_opt": 285, "swell_tol": 35,
         "h_ideal": (1.0, 3.0), "priority": "standard",
+        "webcam": "https://gosurf.fr/webcam/fr/150/Anglet-Plage-de-la-Barre",
     },
     "🏖 Hendaye": {
         "region": "Pays Basque", "lat": 43.3760, "lon": -1.7790,
