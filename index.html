@@ -316,16 +316,17 @@ function toggleRegion(region) {
 }
 // Bandeau adapté aux conditions de l'instant : on prend l'heure la plus proche de
 // maintenant, sur le spot qui marche le mieux à cet instant, et on choisit l'image.
-function currentEntry() {
+function currentBest() {
   const now = Date.now(); let best = null;
   for (const spot of activeSpots()) {
     if (!spot.hours.length) continue;
     const h = spot.hours.reduce((a, b) =>
       Math.abs(new Date(b.time) - now) < Math.abs(new Date(a.time) - now) ? b : a);
-    if (!best || h.score > best.score) best = h;
+    if (!best || h.score > best.h.score) best = { spot, h };
   }
   return best;
 }
+function currentEntry() { const c = currentBest(); return c ? c.h : null; }
 function pickBanner(h) {
   if (!h) return 'golden';
   if (!h.daytime) return 'night';                       // nuit / avant l'aube
@@ -370,17 +371,24 @@ function bestUpcoming() {
 }
 function setResume(data) {
   const el = document.getElementById('resume'); if (!el) return;
-  const now = currentEntry(), up = bestUpcoming();
+  const cb = currentBest(), up = bestUpcoming();
+  const now = cb ? cb.h : null;
   const dateStr = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
   let txt = '';
   if (now) { const v = verdict(now.score); txt += `${v.emoji} <b>${v.label}</b> maintenant · `; }
-  txt += `<b>${dateStr}</b> · `;
-  if (now) txt += `${sizeWord(now.wave_h)} (~${now.wave_h}m, ${now.wind_spd}km/h ${now.offshore ? 'offshore ✅' : 'onshore ⚠️'}).`;
+  txt += `<b>${dateStr}</b>`;
+  // une seule donnée "maintenant" : mesure bouée si dispo, sinon prévision
+  const b = cb ? BUOYS[cb.spot.region] : null;
+  if (b && b.h != null) {
+    txt += ` · 🛰️ <b>${b.h.toFixed(1)}m</b>${b.period ? ' ' + Math.round(b.period) + 's' : ''}${b.dir_label ? ' ' + b.dir_label : ''} <span style="color:var(--dim)">mesuré</span>`;
+  } else if (now) {
+    txt += ` · ${sizeWord(now.wave_h)} (~${now.wave_h}m, ${now.wind_spd}km/h ${now.offshore ? 'offshore' : 'onshore'})`;
+  }
   if (up) {
     const when = whenLabel(up.h.time, data.jours_fr), hr = new Date(up.h.time).getHours();
     txt += up.h.score >= GO
-      ? ` <b>meilleure fenêtre</b> : ${when} ~${hr}h à ${up.spot.name} (${up.h.score}/10).`
-      : ` rien de marquant ces prochains jours — au mieux ${when} ~${hr}h à ${up.spot.name} (${up.h.score}/10).`;
+      ? `. <b>meilleure fenêtre</b> : ${when} ~${hr}h à ${up.spot.name} (${up.h.score}/10).`
+      : `. rien de marquant ces prochains jours — au mieux ${when} ~${hr}h à ${up.spot.name} (${up.h.score}/10).`;
   }
   el.innerHTML = txt;
   el.style.display = 'block';
@@ -480,7 +488,6 @@ function heroCard(spot, win, joursFr) {
     <div class="hwhere">${spot.name}</div>
     <div class="hwhen">${whenRange(win, joursFr)}</div>
     <div class="hcond">${condLine(p)}</div>
-    ${buoyLine(spot.region) ? `<div class="hcond" style="margin-top:6px;color:#9fe9d8">${buoyLine(spot.region)}</div>` : ''}
     ${tide ? `<div class="hcond" style="margin-top:6px">${tide}</div>` : ''}
     <div class="hcond" style="margin-top:6px;opacity:0.85">${shootLine(p)}</div>
     ${spot.webcam ? `<div><button class="cam-btn" data-cam="${spot.webcam}" data-name="${spot.name}">📹 voir le spot (webcam)</button></div>` : ''}
@@ -496,7 +503,6 @@ function sessionCard(spot, win, joursFr) {
       <div class="where">${spot.name}</div>
       <div class="when">${whenRange(win, joursFr)}</div>
       <div class="cond">${condLine(p)}</div>
-      ${buoyLine(spot.region) ? `<div class="cond" style="margin-top:2px;color:#9fe9d8">${buoyLine(spot.region)}</div>` : ''}
       ${tide ? `<div class="cond" style="margin-top:2px">${tide}</div>` : ''}
       <div class="cond" style="margin-top:2px;opacity:0.85">${shootLine(p)}</div>
       ${spot.webcam ? `<button class="cam-btn" data-cam="${spot.webcam}" data-name="${spot.name}">📹 webcam</button>` : ''}
