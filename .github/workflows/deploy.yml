@@ -38,6 +38,8 @@ jobs:
         run: pip install requests astral pytz
 
       - name: Générer les données de surf
+        env:
+          CANDHIS_KEY: ${{ secrets.CANDHIS_KEY }}
         run: python generate_data.py
 
       - name: Préparer le site

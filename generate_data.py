@@ -10,6 +10,7 @@ Usage : python3 generate_data.py
 """
 
 import json
+import os
 import time
 from datetime import datetime, timedelta
 
@@ -27,12 +28,12 @@ FORECAST_DAYS = 5  # même fenêtre que les alertes Telegram
 # ──────────────────────────────────────────
 # FETCH (5 jours, contrairement à surf_alert qui en demande 3)
 # ──────────────────────────────────────────
-def _get_json(url, params, label="API"):
+def _get_json(url, params, label="API", headers=None):
     """GET robuste : timeout 30s, 4 tentatives, pause entre essais (Open-Meteo lent en CI)."""
     last_err = None
     for attempt in range(4):
         try:
-            r = requests.get(url, params=params, timeout=30)
+            r = requests.get(url, params=params, timeout=30, headers=headers)
             r.raise_for_status()
             return r.json()
         except Exception as e:
@@ -220,6 +221,58 @@ def fetch_tides_by_region(prev_tides=None):
     return tides
 
 
+# ──────────────────────────────────────────
+# BOUÉES CANDHIS (houle mesurée en temps réel — clé API requise)
+# Une bouée active par région ; type 2 = directionnel H13, type 0 = non directionnel.
+# ──────────────────────────────────────────
+BUOYS_BY_REGION = {
+    "Landes": ("06402", 2),       # Anglet
+    "Pays Basque": ("06403", 2),  # Saint-Jean-de-Luz
+    "Gironde": ("03302", 2),      # Cap Ferret
+    "Vendée": ("08504", 0),       # Île d'Yeu Nord
+    # Finistère : aucune bouée active actuellement
+}
+
+
+def _f(v):
+    """Convertit en float ; 999.9999 (valeur manquante Candhis) → None."""
+    try:
+        x = float(v)
+        return None if x >= 999 else round(x, 1)
+    except Exception:
+        return None
+
+
+def fetch_buoys(key):
+    if not key:
+        return {}
+    hdr = {"Authorization": key}
+    by_type = {}
+    for region, (code, typ) in BUOYS_BY_REGION.items():
+        by_type.setdefault(typ, []).append(code)
+    measures = {}
+    for typ, codes in by_type.items():
+        url = (f"https://candhis.cerema.fr/API/v1/getCampListeTR.php"
+               f"?type={typ}&camp={','.join(codes)}")
+        try:
+            j = _get_json(url, {}, label="bouées", headers=hdr)
+        except Exception as e:
+            print(f"  ❌ bouées type {typ} indisponibles : {e}")
+            continue
+        for row in (j.get("results") or []):
+            d = _f(row[5]) if typ == 2 else None
+            measures[str(row[0])] = {
+                "time": row[1], "h": _f(row[2]), "period": _f(row[4]),
+                "dir": d, "dir_label": dir_label(d) if d is not None else "",
+            }
+    out = {}
+    for region, (code, typ) in BUOYS_BY_REGION.items():
+        m = measures.get(code)
+        if m and m["h"] is not None:
+            out[region] = m
+    return out
+
+
 def main():
     print(f"[{datetime.now(TZ).strftime('%H:%M')}] Génération des données dashboard...")
     prev = load_previous()
@@ -258,11 +311,19 @@ def main():
         tides = {}
         print(f"  ❌ Marées indisponibles : {e}")
 
+    try:
+        buoys = fetch_buoys(os.environ.get("CANDHIS_KEY", ""))
+        print(f"  → bouées Candhis : {len(buoys)} régions mesurées")
+    except Exception as e:
+        buoys = {}
+        print(f"  ❌ Bouées indisponibles : {e}")
+
     output = {
         "generated_at": datetime.now(TZ).isoformat(),
         "forecast_days": FORECAST_DAYS,
         "jours_fr": JOURS_FR,
         "tides": tides,
+        "buoys": buoys,
         "spots": spots_data,
     }
 

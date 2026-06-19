@@ -180,7 +180,7 @@
 
 <script>
 const GO = 7.5, PRO = 8.5;
-let DATA = null, TIDES = {}, threshold = 7.5;
+let DATA = null, TIDES = {}, BUOYS = {}, threshold = 7.5;
 let FAVS = JSON.parse(localStorage.getItem('surfalert_favs') || '[]');
 let NEAR = null;  // mode "près de moi" (transitoire) : spots les plus proches
 
@@ -396,6 +396,15 @@ function shootLine(p) {
   const golden = p.light >= 9 ? '☀️ golden hour · ' : '';
   return `${golden}${ciel} · ${p.cloud}% nuages`;
 }
+// Houle MESURÉE par la bouée Candhis de la région (donnée réelle, pas prévision).
+function buoyLine(region) {
+  const b = BUOYS[region]; if (!b || b.h == null) return '';
+  const t = new Date(String(b.time).replace(' ', 'T'));
+  const hh = isNaN(t) ? '' : `${t.getHours()}h${String(t.getMinutes()).padStart(2, '0')} `;
+  const per = b.period != null ? ` · ${Math.round(b.period)}s` : '';
+  const dir = b.dir_label ? ' ' + b.dir_label : '';
+  return `🛰️ bouée ${hh}: ${b.h.toFixed(1)}m${per}${dir}`;
+}
 // Marée encadrant la session : extremum juste avant → juste après le pic.
 function tideLine(timeStr, tides) {
   if (!tides || !tides.length) return '';
@@ -431,6 +440,7 @@ function heroCard(spot, win, joursFr) {
     <div class="hwhere">${spot.name}</div>
     <div class="hwhen">${whenRange(win, joursFr)}</div>
     <div class="hcond">${condLine(p)}</div>
+    ${buoyLine(spot.region) ? `<div class="hcond" style="margin-top:6px;color:#9fe9d8">${buoyLine(spot.region)}</div>` : ''}
     ${tide ? `<div class="hcond" style="margin-top:6px">${tide}</div>` : ''}
     <div class="hcond" style="margin-top:6px;opacity:0.85">${shootLine(p)}</div>
     ${spot.webcam ? `<div><button class="cam-btn" data-cam="${spot.webcam}" data-name="${spot.name}">📹 voir le spot (webcam)</button></div>` : ''}
@@ -446,6 +456,7 @@ function sessionCard(spot, win, joursFr) {
       <div class="where">${spot.name}</div>
       <div class="when">${whenRange(win, joursFr)}</div>
       <div class="cond">${condLine(p)}</div>
+      ${buoyLine(spot.region) ? `<div class="cond" style="margin-top:2px;color:#9fe9d8">${buoyLine(spot.region)}</div>` : ''}
       ${tide ? `<div class="cond" style="margin-top:2px">${tide}</div>` : ''}
       <div class="cond" style="margin-top:2px;opacity:0.85">${shootLine(p)}</div>
       ${spot.webcam ? `<button class="cam-btn" data-cam="${spot.webcam}" data-name="${spot.name}">📹 webcam</button>` : ''}
@@ -509,6 +520,7 @@ function closeCam() {
 function init(data) {
   DATA = data;
   TIDES = data.tides || {};
+  BUOYS = data.buoys || {};
   setBanner(data);
   setResume(data);
   renderMySpotsBar();
