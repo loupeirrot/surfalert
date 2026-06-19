@@ -23,10 +23,20 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html { background: var(--bg-top); }   /* derrière la barre d'état iOS : océan, pas blanc */
   body {
-    font-family: var(--body); color: var(--text); line-height: 1.55; min-height: 100vh;
+    font-family: var(--body); color: var(--text); line-height: 1.55; min-height: 100dvh;
+    font-variant-numeric: tabular-nums;
     background: linear-gradient(165deg, #0b2545 0%, #13315c 34%, #0a4d68 68%, #088395 100%);
     background-attachment: fixed; position: relative; overflow-x: hidden;
   }
+  h1, .where, .hwhere { text-wrap: balance; }
+  /* grain fixe : texture physique, anti "flat AI" (skill high-end-visual) */
+  body::after { content: ""; position: fixed; inset: 0; z-index: 50; pointer-events: none; opacity: 0.04;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+  /* révélation douce à l'entrée dans le viewport (skill motion choreography) */
+  .reveal { opacity: 0; transform: translateY(22px); filter: blur(6px);
+    transition: opacity .7s cubic-bezier(.16,1,.3,1), transform .7s cubic-bezier(.16,1,.3,1), filter .7s ease; }
+  .reveal.in { opacity: 1; transform: none; filter: none; }
+  @media (prefers-reduced-motion: reduce) { .reveal { opacity: 1 !important; transform: none !important; filter: none !important; transition: none; } }
   .blob { position: fixed; border-radius: 50%; filter: blur(72px); z-index: 0; pointer-events: none; }
   .blob.a { width: 320px; height: 320px; background: #2ec4b6; opacity: 0.30; top: 120px; right: -60px; }
   .blob.b { width: 300px; height: 300px; background: #4cc9f0; opacity: 0.26; top: 46%; left: -100px; }
@@ -434,7 +444,7 @@ function range(win) {
 function heroCard(spot, win, joursFr) {
   const p = win.peak, c = solid(p.score), g = grad(p.score), v = verdict(p.score);
   const tide = tideLine(p.time, TIDES[spot.region]);
-  return `<div class="card hero" style="--hero-glow:${c}">
+  return `<div class="card hero reveal" style="--hero-glow:${c}">
     <span class="htag" style="background:${v.color}30;color:${v.color};border:1px solid ${v.color}66">${tagText(p.score, spot.priority)}</span>
     <div class="hscore"><span class="n" style="background-image:${g}">${p.score}</span><span class="o">/10</span></div>
     <div class="hwhere">${spot.name}</div>
@@ -449,7 +459,7 @@ function heroCard(spot, win, joursFr) {
 function sessionCard(spot, win, joursFr) {
   const p = win.peak;
   const tide = tideLine(p.time, TIDES[spot.region]);
-  return `<div class="card session">
+  return `<div class="card session reveal">
     <div class="score-box" style="background:${grad(p.score)}"><span class="n">${p.score}</span></div>
     <div class="info">
       <span class="tag">${tagText(p.score, spot.priority)}</span>
@@ -503,10 +513,17 @@ function renderDetail() {
       return `<div class="day"><div class="day-label">${whenLabel(key, DATA.jours_fr)}</div>
         <div class="timeline">${cells}</div></div>`;
     }).join('');
-    return `<div class="card spot"><div class="spot-head"><span class="spot-name">${spot.name}</span>${fire}</div>${rows}</div>`;
+    return `<div class="card spot reveal"><div class="spot-head"><span class="spot-name">${spot.name}</span>${fire}</div>${rows}</div>`;
   }).join('');
 }
-function rerender() { renderSummary(); renderDetail(); }
+let _io;
+function observeReveals() {
+  if (!_io) _io = new IntersectionObserver(es => es.forEach(e => {
+    if (e.isIntersecting) { e.target.classList.add('in'); _io.unobserve(e.target); }
+  }), { threshold: 0.08 });
+  document.querySelectorAll('.reveal:not(.in)').forEach(el => _io.observe(el));
+}
+function rerender() { renderSummary(); renderDetail(); observeReveals(); }
 function openCam(url, name) {
   document.getElementById('cam-title').textContent = name;
   document.getElementById('cam-open').href = url;
