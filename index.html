@@ -72,7 +72,7 @@
     color:var(--text); font-size:0.98rem; cursor:pointer; display:flex; align-items:center; justify-content:center;
     position:relative; transition:transform .2s var(--ease), background .2s; }
   .navbtn:hover { background:var(--card2); } .navbtn:active { transform:scale(0.92); }
-  .navbtn.active { background:linear-gradient(135deg,var(--go),#23b9c4); border-color:transparent; }
+  .navbtn.active { background:linear-gradient(135deg,var(--go),#23b9c4); border-color:transparent; color:#04231a; }
   .navbtn .cnt { position:absolute; top:-3px; right:-3px; background:var(--go); color:#04231a; font-family:var(--head);
     font-size:0.58rem; font-weight:700; min-width:15px; height:15px; border-radius:999px; display:flex;
     align-items:center; justify-content:center; padding:0 3px; }
@@ -95,9 +95,9 @@
     letter-spacing:-0.02em; text-shadow:0 0 60px var(--glow,#34e89e); filter:saturate(1.1); }
   .hero-sub { font-family:var(--head); font-size:1.05rem; font-weight:500; margin-top:14px; color:var(--text); }
   .hero-up { font-size:0.86rem; color:var(--dim); margin-top:6px; }
-  .hero-wave { position:absolute; left:-50%; bottom:-2px; width:200%; height:90px; z-index:-1; opacity:0.5;
-    animation:drift 14s linear infinite; }
-  @keyframes drift { to { transform:translateX(25%); } }
+  .hero-wave { position:absolute; left:0; bottom:-2px; width:200%; height:90px; z-index:-1; opacity:0.5;
+    animation:drift 20s linear infinite; will-change:transform; }
+  @keyframes drift { from { transform:translateX(0); } to { transform:translateX(-50%); } }
 
   /* ── Controls / mes spots ── */
   .pillrow { display:flex; flex-wrap:wrap; gap:9px; justify-content:center; margin:22px 0 0; }
@@ -146,7 +146,7 @@
   .hero-bento { display:grid; grid-template-columns:1.35fr 1fr; gap:12px; align-items:stretch; }
   .b-session { grid-row:span 2; }
   .b-tide { grid-column:1 / -1; }
-  .tile { padding:14px 15px; display:flex; flex-direction:column; min-width:0; }
+  .tile { padding:14px 15px; display:flex; flex-direction:column; min-width:0; overflow:hidden; }
   .tile-label { font-family:var(--head); font-size:0.64rem; letter-spacing:1.5px; text-transform:uppercase; color:var(--dim); }
   .tile-big { font-family:var(--display); font-weight:700; font-size:2.1rem; line-height:1; margin-top:auto; }
   .tile .sc-cond { font-size:0.74rem; color:var(--dim); margin-top:3px; }
@@ -156,7 +156,7 @@
   .cam-tile:active { transform:scale(0.98); }
   .cam-tile .tile-play { font-family:var(--head); font-weight:600; font-size:0.82rem; color:#fff; }
   .b-tide svg { display:block; }
-  .spot-card { padding:15px 16px; display:flex; flex-direction:column; gap:6px; min-width:0; }
+  .spot-card { padding:15px 16px; display:flex; flex-direction:column; gap:6px; min-width:0; overflow:hidden; }
   .spot-card .sc-top { display:flex; align-items:center; justify-content:space-between; gap:8px; }
   .sc-score { font-family:var(--display); font-weight:700; font-size:1.9rem; line-height:1;
     -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
@@ -263,7 +263,8 @@
 const GO = 7.5, PRO = 8.5;
 let DATA = null, TIDES = {}, BUOYS = {};
 let FAVS = JSON.parse(localStorage.getItem('surfalert_favs') || '[]');
-let NEAR = null;
+let NEAR = JSON.parse(localStorage.getItem('swelleo_near') || 'null');
+function setNear(v) { NEAR = v; if (v) localStorage.setItem('swelleo_near', JSON.stringify(v)); else localStorage.removeItem('swelleo_near'); }
 
 function grad(s) {
   if (s >= PRO) return 'linear-gradient(135deg,#ffb86c,#ff8a4c)';
@@ -277,9 +278,9 @@ function solid(s) {
   if (s >= 6) return '#ffce6a'; if (s >= 4) return '#7fb4e6'; return '#9a93b8';
 }
 function verdict(s) {
-  if (s >= 6.5) return { label:'GO',  color:'#34e89e' };
-  if (s >= 4.5) return { label:'BOF', color:'#ffce6a' };
-  return { label:'NON', color:'#ff6b6b' };
+  if (s >= 6.5) return { label:'GO', color:'#34e89e' };
+  if (s >= 4.5) return { label:'OK', color:'#ffce6a' };
+  return { label:'NO', color:'#ff6b6b' };
 }
 
 // ── Mes spots / favoris ──
@@ -296,20 +297,18 @@ function distKm(a, b, x, y) {
   return 2 * R * Math.asin(Math.sqrt(h));
 }
 function locateMe() {
-  const btn = document.getElementById('near-btn');
   if (!navigator.geolocation) { alert('Géolocalisation indisponible sur cet appareil.'); return; }
-  if (btn) btn.textContent = '⏳';
   navigator.geolocation.getCurrentPosition(pos => {
     const { latitude, longitude } = pos.coords;
-    NEAR = DATA.spots.map(s => ({ name: s.name, d: distKm(latitude, longitude, s.lat, s.lon) }))
-      .sort((a, b) => a.d - b.d).slice(0, 6).map(x => x.name);
-    FAVS = []; refreshSpots();
-  }, () => { if (btn) btn.textContent = '📍'; alert('Localisation refusée ou indisponible.'); },
+    setNear(DATA.spots.map(s => ({ name: s.name, d: distKm(latitude, longitude, s.lat, s.lon) }))
+      .sort((a, b) => a.d - b.d).slice(0, 6).map(x => x.name));
+    FAVS = []; saveFavs(); refreshSpots();
+  }, () => alert('Localisation refusée ou indisponible.'),
   { timeout: 8000, maximumAge: 600000 });
 }
 function saveFavs() { localStorage.setItem('surfalert_favs', JSON.stringify(FAVS)); }
 function toggleFav(name) {
-  NEAR = null;
+  setNear(null);
   const i = FAVS.indexOf(name);
   if (i >= 0) FAVS.splice(i, 1); else FAVS.push(name);
   saveFavs(); refreshSpots();
@@ -317,9 +316,12 @@ function toggleFav(name) {
 function refreshSpots() { renderMySpotsBar(); renderSpotsPanel(); renderHero(); rerender(); }
 function renderMySpotsBar() {
   const bar = document.getElementById('myspots-bar'); if (!bar) return;
-  let html = `<button id="near-btn" class="navbtn ${NEAR ? 'active' : ''}" title="Près de moi" aria-label="Près de moi">📍</button>`;
-  html += `<button id="spots-toggle" class="navbtn" title="Mes spots" aria-label="Mes spots">⭐${FAVS.length ? '<span class="cnt">' + FAVS.length + '</span>' : ''}</button>`;
-  if (NEAR || FAVS.length) html += `<button id="spots-clear" class="navbtn" title="Tout afficher" aria-label="Tout afficher">↺</button>`;
+  const pin = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-6-5.2-6-10a6 6 0 1 1 12 0c0 4.8-6 10-6 10z"/><circle cx="12" cy="11" r="2.1"/></svg>`;
+  const star = `<svg viewBox="0 0 24 24" width="18" height="18" fill="${FAVS.length ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.6l2.6 5.3 5.8.8-4.2 4.1 1 5.8L12 17.8 6.8 19.6l1-5.8L3.6 9.7l5.8-.8z"/></svg>`;
+  const reset = `<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4.5v4h4"/></svg>`;
+  let html = `<button id="near-btn" class="navbtn ${NEAR ? 'active' : ''}" title="Près de moi" aria-label="Près de moi">${pin}</button>`;
+  html += `<button id="spots-toggle" class="navbtn" title="Mes spots" aria-label="Mes spots">${star}${FAVS.length ? `<span class="cnt">${FAVS.length}</span>` : ''}</button>`;
+  if (NEAR || FAVS.length) html += `<button id="spots-clear" class="navbtn" title="Tout afficher" aria-label="Tout afficher">${reset}</button>`;
   bar.innerHTML = html;
   document.getElementById('near-btn').onclick = locateMe;
   document.getElementById('spots-toggle').onclick = ev => {
@@ -328,7 +330,7 @@ function renderMySpotsBar() {
     p.style.display = p.style.display === 'none' ? 'block' : 'none';
   };
   const clr = document.getElementById('spots-clear');
-  if (clr) clr.onclick = () => { NEAR = null; FAVS = []; saveFavs(); refreshSpots(); };
+  if (clr) clr.onclick = () => { setNear(null); FAVS = []; saveFavs(); refreshSpots(); };
 }
 function renderSpotsPanel() {
   const panel = document.getElementById('spots-panel'); if (!panel || !DATA) return;
@@ -349,7 +351,7 @@ function renderSpotsPanel() {
   panel.querySelectorAll('.spotrow').forEach(row => { row.onclick = () => toggleFav(row.dataset.name); });
 }
 function toggleRegion(region) {
-  NEAR = null;
+  setNear(null);
   const names = DATA.spots.filter(s => s.region === region).map(s => s.name);
   const allOn = names.every(n => FAVS.includes(n));
   if (allOn) FAVS = FAVS.filter(n => !names.includes(n));
@@ -465,8 +467,8 @@ function renderHero() {
   }
   el.innerHTML = `
     <div class="hero-bg"><img id="banner-img" src="assets/wave-${mood}.webp" alt="Conditions de surf"></div>
-    <svg class="hero-wave" viewBox="0 0 1440 120" preserveAspectRatio="none"><path fill="${v.color}" fill-opacity="0.5"
-      d="M0,64 C240,110 480,10 720,52 C960,94 1200,20 1440,60 L1440,120 L0,120 Z"></path></svg>
+    <svg class="hero-wave" viewBox="0 0 2880 120" preserveAspectRatio="none"><path fill="${v.color}" fill-opacity="0.5"
+      d="M0,60 C240,30 480,30 720,60 C960,90 1200,90 1440,60 C1680,30 1920,30 2160,60 C2400,90 2640,90 2880,60 L2880,120 L0,120 Z"></path></svg>
     <div class="hero-inner">
       <div class="eyebrow">aujourd'hui${cb ? ' · ' + cb.spot.name : ''}</div>
       <div class="verdict" style="color:${v.color};--glow:${v.color}">${v.label}</div>
