@@ -131,6 +131,20 @@
 
   /* ── Bento grid of spot cards ── */
   .bento { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  /* Bento du spot en avant (calqué sur la maquette) */
+  .hero-bento { display:grid; grid-template-columns:1.35fr 1fr; gap:12px; align-items:stretch; }
+  .b-session { grid-row:span 2; }
+  .b-tide { grid-column:1 / -1; }
+  .tile { padding:14px 15px; display:flex; flex-direction:column; min-width:0; }
+  .tile-label { font-family:var(--head); font-size:0.64rem; letter-spacing:1.5px; text-transform:uppercase; color:var(--dim); }
+  .tile-big { font-family:var(--display); font-weight:700; font-size:2.1rem; line-height:1; margin-top:auto; }
+  .tile .sc-cond { font-size:0.74rem; color:var(--dim); margin-top:3px; }
+  .cam-tile { position:relative; min-height:104px; justify-content:flex-end; gap:3px;
+    background-size:cover; background-position:center; cursor:pointer; overflow:hidden;
+    transition:transform .25s var(--ease); }
+  .cam-tile:active { transform:scale(0.98); }
+  .cam-tile .tile-play { font-family:var(--head); font-weight:600; font-size:0.82rem; color:#fff; }
+  .b-tide svg { display:block; }
   .spot-card { padding:15px 16px; display:flex; flex-direction:column; gap:6px; min-width:0; }
   .spot-card .sc-top { display:flex; align-items:center; justify-content:space-between; gap:8px; }
   .sc-score { font-family:var(--display); font-weight:700; font-size:1.9rem; line-height:1;
@@ -453,16 +467,12 @@ function renderHero() {
 // ── Featured card (best upcoming) ──
 function featureCard(spot, win) {
   const p = win.peak, c = solid(p.score), g = grad(p.score), v = verdict(p.score);
-  const tide = tideLine(p.time, TIDES[spot.region]);
-  return `<div class="card glass feature reveal" style="--vc:${c}">
-    <span class="vtag" style="background:${v.color}26;color:${v.color};border:1px solid ${v.color}55">${v.label} · ${spot.priority === 'fire' && p.score >= PRO ? 'ça envoie 🔥' : 'le meilleur créneau'}</span>
+  return `<div class="card glass feature b-session reveal" style="--vc:${c}">
+    <span class="vtag" style="background:${v.color}26;color:${v.color};border:1px solid ${v.color}55">best session</span>
     <div class="fscore"><span class="n" style="background-image:${g}">${p.score}</span><span class="o">/10</span></div>
     <div class="fwhere">${spot.name}</div>
     <div class="fwhen">${whenRange(win, DATA.jours_fr)}</div>
     <div class="fline">🌊 ${condLine(p)}</div>
-    ${tide ? `<div class="fline" style="margin-top:5px">${tide}</div>` : ''}
-    <div class="fline" style="margin-top:5px">🎥 ${shootLine(p)}</div>
-    ${spot.webcam ? `<div><button class="cam-btn" data-cam="${spot.webcam}" data-name="${spot.name}">📹 voir le spot</button></div>` : ''}
   </div>`;
 }
 function spotCard(spot, win) {
@@ -478,14 +488,66 @@ function spotCard(spot, win) {
     ${spot.webcam ? `<button class="cam-btn" data-cam="${spot.webcam}" data-name="${spot.name}">📹 webcam</button>` : ''}
   </div>`;
 }
+function spotNowHour(spot) {
+  if (!spot.hours.length) return null; const now = Date.now();
+  return spot.hours.reduce((a, b) => Math.abs(new Date(b.time) - now) < Math.abs(new Date(a.time) - now) ? b : a);
+}
+function buoyTile(spot) {
+  const b = BUOYS[spot.region];
+  if (b && b.h != null) return `<div class="card glass tile b-buoy reveal"><span class="tile-label">🛰️ bouée live</span>
+    <div class="tile-big">${b.h.toFixed(1)}m</div><div class="sc-cond">${b.period ? Math.round(b.period) + 's' : ''} ${b.dir_label || ''}</div></div>`;
+  const nh = spotNowHour(spot);
+  return `<div class="card glass tile b-buoy reveal"><span class="tile-label">maintenant</span>
+    <div class="tile-big">${nh ? nh.wave_h + 'm' : '—'}</div><div class="sc-cond">${nh ? nh.wave_p + 's ' + nh.swell_label : ''}</div></div>`;
+}
+function camShootTile(spot, win) {
+  if (spot.webcam) return `<div class="card glass tile cam-tile b-cam reveal" data-cam="${spot.webcam}" data-name="${spot.name}"
+    style="background-image:linear-gradient(rgba(6,13,24,0.12),rgba(6,13,24,0.72)),url('assets/wave-clean.webp')">
+    <span class="tile-label" style="color:rgba(255,255,255,0.8)">webcam</span><span class="tile-play">▶ voir le spot</span></div>`;
+  return `<div class="card glass tile b-cam reveal"><span class="tile-label">🎥 shoot</span>
+    <div class="sc-cond" style="margin-top:10px;font-size:0.8rem">${shootLine(win.peak)}</div></div>`;
+}
+function tideGraph(region) {
+  const ex = TIDES[region]; if (!ex || ex.length < 2) return '';
+  const W = 300, H = 66, pad = 6, now = Date.now();
+  const t0 = now - 5 * 3600000, t1 = now + 17 * 3600000;
+  const pts = ex.map(e => ({ t: new Date(e.time).getTime(), high: e.type === 'haute' }))
+    .filter(p => p.t >= t0 - 3600000 && p.t <= t1 + 3600000).sort((a, b) => a.t - b.t);
+  if (pts.length < 2) return '';
+  const X = t => pad + (t - t0) / (t1 - t0) * (W - 2 * pad);
+  const Y = high => high ? pad + 5 : H - pad - 5;
+  let d = `M ${X(pts[0].t).toFixed(1)} ${Y(pts[0].high).toFixed(1)}`;
+  for (let i = 1; i < pts.length; i++) {
+    const x0 = X(pts[i-1].t), y0 = Y(pts[i-1].high), x1 = X(pts[i].t), y1 = Y(pts[i].high), mx = (x0 + x1) / 2;
+    d += ` C ${mx.toFixed(1)} ${y0.toFixed(1)}, ${mx.toFixed(1)} ${y1.toFixed(1)}, ${x1.toFixed(1)} ${y1.toFixed(1)}`;
+  }
+  const nx = X(now).toFixed(1);
+  let before = null, after = null;
+  for (const e of ex) { const et = new Date(e.time).getTime(); if (et <= now) before = e; else if (!after) after = e; }
+  const lab = [before, after].filter(Boolean)
+    .map(e => `${e.type} ${new Date(e.time).getHours()}h${String(new Date(e.time).getMinutes()).padStart(2,'0')}`).join(' → ');
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="width:100%;height:58px">
+    <path d="${d}" fill="none" stroke="#34e89e" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="${nx}" y1="3" x2="${nx}" y2="${H-3}" stroke="rgba(255,255,255,0.22)" stroke-width="1" stroke-dasharray="3 3"/>
+  </svg><div class="sc-cond">${lab}</div>`;
+}
+function tideTile(region) {
+  const g = tideGraph(region); if (!g) return '';
+  return `<div class="card glass tile b-tide reveal"><span class="tile-label">🌊 marée</span>${g}</div>`;
+}
 function renderSummary() {
   const el = document.getElementById('summary');
   const all = activeSpots().map(spot => ({ spot, win: spotBest(spot) })).filter(x => x.win);
   if (!all.length) { el.innerHTML = `<div class="card glass empty reveal in">😴 pas de prévision exploitable pour le moment.</div>`; return; }
   all.sort((a, b) => b.win.peak.score - a.win.peak.score);
-  const [hero, ...rest] = all;
-  el.innerHTML = `<div class="label">le meilleur créneau à venir</div>`
-    + featureCard(hero.spot, hero.win)
+  const [top, ...rest] = all;
+  el.innerHTML = `<div class="label">le meilleur créneau à venir</div>
+    <div class="hero-bento">
+      ${featureCard(top.spot, top.win)}
+      ${buoyTile(top.spot)}
+      ${camShootTile(top.spot, top.win)}
+      ${tideTile(top.spot.region)}
+    </div>`
     + (rest.length ? `<div class="label">les autres spots</div><div class="bento">`
         + rest.map(({spot, win}) => spotCard(spot, win)).join('') + `</div>` : '');
 }
@@ -550,7 +612,7 @@ function init(data) {
       ? 'voir le détail heure par heure ↓' : 'masquer le détail ↑';
   });
   document.body.addEventListener('click', e => {
-    const b = e.target.closest('.cam-btn'); if (b) openCam(b.dataset.cam, b.dataset.name);
+    const b = e.target.closest('[data-cam]'); if (b) openCam(b.dataset.cam, b.dataset.name);
   });
   document.getElementById('cam-close').addEventListener('click', closeCam);
   document.getElementById('cam-modal').addEventListener('click', e => { if (e.target.id === 'cam-modal') closeCam(); });
