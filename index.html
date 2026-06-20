@@ -149,11 +149,12 @@
   .tile-label { font-family:var(--head); font-size:0.64rem; letter-spacing:1.5px; text-transform:uppercase; color:var(--dim); }
   .tile-big { font-family:var(--display); font-weight:700; font-size:2.1rem; line-height:1; margin-top:auto; }
   .tile .sc-cond { font-size:0.74rem; color:var(--dim); margin-top:3px; }
-  .cam-tile { position:relative; min-height:104px; justify-content:flex-end; gap:3px;
-    background-size:cover; background-position:center; cursor:pointer; overflow:hidden;
+  .cam-tile { position:relative; min-height:104px; padding:0; cursor:pointer; overflow:hidden;
     transition:transform .25s var(--ease); }
   .cam-tile:active { transform:scale(0.98); }
-  .cam-tile .tile-play { font-family:var(--head); font-weight:600; font-size:0.82rem; color:#fff; }
+  .cam-thumb { flex:1; min-height:58px; background-size:cover; background-position:center; }
+  .cam-foot { padding:9px 13px; background:rgba(6,13,24,0.86); display:flex; flex-direction:column; gap:1px; }
+  .cam-foot .tile-play { font-family:var(--head); font-weight:600; font-size:0.82rem; color:#fff; }
   .b-tide svg { display:block; }
   .spot-card { padding:15px 16px; display:flex; flex-direction:column; gap:6px; min-width:0; overflow:hidden; }
   .spot-card .sc-top { display:flex; align-items:center; justify-content:space-between; gap:8px; }
@@ -513,9 +514,10 @@ function buoyTile(spot) {
     <div class="tile-big">${nh ? nh.wave_h + 'm' : '—'}</div><div class="sc-cond">${nh ? nh.wave_p + 's ' + nh.swell_label : ''}</div></div>`;
 }
 function camShootTile(spot, win) {
-  if (spot.webcam) return `<div class="card glass tile cam-tile b-cam reveal" data-cam="${spot.webcam}" data-name="${spot.name}"
-    style="background-image:linear-gradient(rgba(6,13,24,0.05) 35%,rgba(6,13,24,0.9)),url('assets/wave-clean.webp')">
-    <span class="tile-label" style="color:rgba(255,255,255,0.8)">webcam</span><span class="tile-play">▶ voir le spot</span></div>`;
+  if (spot.webcam) return `<div class="card glass tile cam-tile b-cam reveal" data-cam="${spot.webcam}" data-name="${spot.name}">
+    <div class="cam-thumb" style="background-image:url('assets/wave-clean.webp')"></div>
+    <div class="cam-foot"><span class="tile-label" style="color:rgba(255,255,255,0.7)">webcam</span><span class="tile-play">▶ voir le spot</span></div>
+  </div>`;
   return `<div class="card glass tile b-cam reveal"><span class="tile-label">🎥 shoot</span>
     <div class="sc-cond" style="margin-top:10px;font-size:0.8rem">${shootLine(win.peak)}</div></div>`;
 }
