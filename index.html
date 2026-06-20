@@ -53,9 +53,8 @@
   .skip:focus { left:12px; }
 
   /* ── Glass utility (double-bezel) ── */
-  .glass { background:var(--card); backdrop-filter:blur(22px) saturate(160%);
-    -webkit-backdrop-filter:blur(22px) saturate(160%); border:1px solid var(--stroke);
-    box-shadow:0 18px 50px rgba(2,8,18,0.5), inset 0 1px 0 rgba(255,255,255,0.14), inset 0 -1px 0 rgba(0,0,0,0.25); }
+  .glass { background:rgba(17,29,46,0.66); border:1px solid var(--stroke);
+    box-shadow:0 18px 50px rgba(2,8,18,0.5), inset 0 1px 0 rgba(255,255,255,0.10); }
 
   /* ── Nav (floating island) ── */
   nav { position:sticky; top:0; z-index:40; padding:14px 16px 0; }
@@ -90,7 +89,7 @@
   .hero-inner { text-align:center; padding:26px 18px; position:relative; }
   .eyebrow { display:inline-block; font-family:var(--head); font-size:0.66rem; letter-spacing:2.5px;
     text-transform:uppercase; color:var(--text); background:rgba(255,255,255,0.08); border:1px solid var(--stroke);
-    padding:6px 13px; border-radius:999px; margin-bottom:18px; backdrop-filter:blur(8px); }
+    padding:6px 13px; border-radius:999px; margin-bottom:18px; }
   .verdict { font-family:var(--display); font-weight:700; font-size:clamp(5.5rem,30vw,12rem); line-height:0.84;
     letter-spacing:-0.02em; text-shadow:0 0 60px var(--glow,#34e89e); filter:saturate(1.1); }
   .hero-sub { font-family:var(--head); font-size:1.05rem; font-weight:500; margin-top:14px; color:var(--text); }
@@ -515,7 +514,7 @@ function buoyTile(spot) {
 }
 function camShootTile(spot, win) {
   if (spot.webcam) return `<div class="card glass tile cam-tile b-cam reveal" data-cam="${spot.webcam}" data-name="${spot.name}"
-    style="background-image:linear-gradient(rgba(6,13,24,0.12),rgba(6,13,24,0.72)),url('assets/wave-clean.webp')">
+    style="background-image:linear-gradient(rgba(6,13,24,0.05) 35%,rgba(6,13,24,0.9)),url('assets/wave-clean.webp')">
     <span class="tile-label" style="color:rgba(255,255,255,0.8)">webcam</span><span class="tile-play">▶ voir le spot</span></div>`;
   return `<div class="card glass tile b-cam reveal"><span class="tile-label">🎥 shoot</span>
     <div class="sc-cond" style="margin-top:10px;font-size:0.8rem">${shootLine(win.peak)}</div></div>`;
