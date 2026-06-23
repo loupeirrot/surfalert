@@ -3,6 +3,9 @@
 
 # Données générées (regénérées automatiquement par GitHub Actions)
 data.json
+spots/
+sitemap.xml
+robots.txt
 
 # Config locale Claude Code (propre à ta machine)
 .claude/settings.local.json

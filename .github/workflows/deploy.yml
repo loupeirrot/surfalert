@@ -42,11 +42,15 @@ jobs:
           CANDHIS_KEY: ${{ secrets.CANDHIS_KEY }}
         run: python generate_data.py
 
+      - name: Générer les pages SEO par spot
+        run: python generate_pages.py
+
       - name: Préparer le site
         run: |
           mkdir -p _site/assets
-          cp index.html data.json manifest.json sw.js _site/
+          cp index.html data.json manifest.json sw.js sitemap.xml robots.txt _site/
           cp -r assets/* _site/assets/
+          cp -r spots _site/spots
 
       - name: Configurer Pages
         uses: actions/configure-pages@v5
