@@ -5,6 +5,8 @@ Analyse les conditions de surf et envoie des alertes Telegram.
 """
 
 import os
+import re
+import unicodedata
 import requests
 from datetime import datetime, timedelta
 import pytz
@@ -37,9 +39,10 @@ _load_env_file()
 # Secrets lus depuis l'environnement / le fichier .env — jamais en dur dans le code.
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN", "")
 CHAT_ID = os.environ.get("CHAT_ID", "")
-ALERT_THRESHOLD = 7.5      # En dessous : silence total
-ALERT_FIRE     = 8.5       # Score "session pro" sur spots prioritaires (vibration)
+ALERT_THRESHOLD = 7.5      # En dessous : silence total (≥6.5 = GO, 7.5 = forte session)
+ALERT_FIRE     = 8.5       # Score "grosse session" sur spots prioritaires (notif sonore)
 FORECAST_HOURS = 120       # Fenêtre d'analyse (5 jours)
+SITE_URL       = "https://loupeirrot.github.io/swelleo"   # ← deviendra https://swelleo.com
 
 # Chaque spot a ses paramètres propres :
 #   region     : pour regrouper les spots dans l'appli
@@ -320,6 +323,15 @@ def score_bar(s):
     filled = round(s)
     return "█" * filled + "░" * (10 - filled)
 
+def clean_name(name):
+    """Retire l'emoji de tête : '🔥 La Nord (Hossegor)' → 'La Nord (Hossegor)'."""
+    return re.sub(r"^[^\w(]+", "", name).strip()
+
+def slug(name):
+    """Slug identique à generate_pages.py pour lier vers /spots/<slug>/."""
+    s = unicodedata.normalize("NFKD", clean_name(name).lower()).encode("ascii", "ignore").decode()
+    return re.sub(r"[^a-z0-9]+", "-", s).strip("-")
+
 def find_best_window(results):
     """Trouve la meilleure fenêtre continue ≥ ALERT_THRESHOLD."""
     good = [r for r in results if r["score"] >= ALERT_THRESHOLD]
@@ -362,10 +374,11 @@ def build_alert(spot_name, spot_cfg, results):
         urgence  = f"  ⏱ J-{days_away}"
 
     # Header
+    nom = clean_name(spot_name)
     if is_fire:
-        header = f"🚨 SESSION PRO — {spot_name}"
+        header = f"🔥 GROSSE SESSION — {nom}"
     else:
-        header = f"📸 GO FILMER — {spot_name}"
+        header = f"🟢 GO — {nom}"
 
     # Durée de la fenêtre
     if len(window) >= 2:
@@ -385,11 +398,7 @@ def build_alert(spot_name, spot_cfg, results):
     msg += f"⭐ Score : <b>{best['score']}/10</b>  {score_bar(best['score'])}\n\n"
     msg += f"🌊 <b>{best['wave_h']:.1f}m</b> · {best['wave_p']:.0f}s · {best['swell_dir_label']} {best['swell_dir']:.0f}°\n"
     msg += f"💨 {wind_info}\n"
-    msg += f"📸 Lumière : {best['breakdown']['Lumière']:.0f}/10"
-    if best['breakdown']['Lumière'] >= 9:
-        msg += "  ← golden hour ✨"
-    msg += "\n"
-    msg += f"☁️  Ciel : {best['cloud']}%\n"
+    msg += f"👉 <a href=\"{SITE_URL}/spots/{slug(spot_name)}/\">voir la fiche</a>"
 
     return msg, is_fire
 
@@ -434,11 +443,19 @@ def run():
         print("  → Rien d'intéressant dans les 72h. Aucun message envoyé.")
         return
 
-    # Trie par score décroissant et envoie
+    # Trie par score décroissant → un seul message digest (le meilleur en détail + les autres en liste)
     alerts.sort(reverse=True)
-    for score, msg, is_fire, spot_name in alerts:
-        send(msg, disable_notification=not is_fire)
-        print(f"  ✅ Alerte envoyée : {spot_name} ({score}/10)")
+    top_score, top_msg, top_fire, top_name = alerts[0]
+    digest = top_msg
+    if len(alerts) > 1:
+        digest += "\n\n<b>Aussi go :</b>\n"
+        digest += "\n".join(
+            f"• {clean_name(name)} — {score}/10  (<a href=\"{SITE_URL}/spots/{slug(name)}/\">fiche</a>)"
+            for score, _msg, _fire, name in alerts[1:]
+        )
+    digest += f"\n\n🌊 <a href=\"{SITE_URL}/\">Tous les spots sur swelleo</a>"
+    send(digest, disable_notification=not top_fire)
+    print(f"  ✅ Digest envoyé : {len(alerts)} spot(s), top {top_name} ({top_score}/10)")
 
 
 if __name__ == "__main__":
