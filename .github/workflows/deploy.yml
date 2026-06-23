@@ -52,6 +52,7 @@ jobs:
           cp -r assets/* _site/assets/
           cp -r spots _site/spots
           cp -r regions _site/regions
+          cp -r a-propos mentions-legales confidentialite _site/
 
       - name: Configurer Pages
         uses: actions/configure-pages@v5

@@ -87,7 +87,8 @@ STYLE = """
       linear-gradient(180deg,var(--bg),var(--bg2));background-attachment:fixed}
   a{color:var(--go);text-decoration:none}
   .wrap{max-width:680px;margin:0 auto;padding:16px 16px 60px;position:relative;z-index:1}
-  .top{display:flex;align-items:center;gap:10px;padding:9px 4px 0}
+  .top{display:inline-flex;align-items:center;gap:10px;padding:9px 4px 0;color:var(--text);text-decoration:none;transition:opacity .2s}
+  .top:hover{opacity:0.8}
   .top img{width:30px;height:30px;border-radius:8px}
   .top b{font-size:1.05rem;font-weight:600}
   .crumb{font-size:0.82rem;color:var(--dim);margin:14px 4px 0}
@@ -141,7 +142,11 @@ STYLE = """
   .scard .sc-name{font-weight:600;font-size:1rem;margin-top:8px}
   .scard .sc-cond{font-size:0.8rem;color:var(--dim);margin-top:3px}
   .scard .sc-go{font-size:0.78rem;color:var(--go);margin-top:9px}
-  footer{margin-top:30px;font-size:0.76rem;color:var(--dim);line-height:1.8;text-align:center}
+  footer{margin-top:34px;font-size:0.78rem;color:var(--dim);line-height:1.7}
+  .fnav{display:grid;gap:9px;padding:20px;border-radius:18px}
+  .fnav b{color:var(--text);font-weight:600;margin-right:4px}
+  .fnav a{color:var(--dim)}.fnav a:hover{color:var(--text)}
+  .fcred{text-align:center;font-size:0.7rem;margin-top:16px;opacity:0.85}
   .reveal{opacity:0;transform:translateY(26px);filter:blur(8px);transition:opacity .8s var(--ease),transform .8s var(--ease),filter .8s ease}
   .reveal.in{opacity:1;transform:none;filter:none}
   @keyframes verdictPulse{0%,100%{text-shadow:0 0 42px var(--glow,#34e89e)}50%{text-shadow:0 0 90px var(--glow,#34e89e),0 0 38px var(--glow,#34e89e)}}
@@ -201,18 +206,36 @@ def head(title, desc, url, photo, jsonld):
 </head>
 <body>
 <div class="wrap">
-  <div class="top"><img src="{SITE_BASE}/assets/icon-192.png" alt="swelleo"><b>swelleo<span style="color:var(--go)">.</span></b></div>"""
+  <a class="top" href="{SITE_BASE}/" aria-label="Retour à l'accueil swelleo"><img src="{SITE_BASE}/assets/icon-192.png" alt="swelleo"><b>swelleo<span style="color:var(--go)">.</span></b></a>"""
 
 
-FOOT = f"""
+FOOTER = ""  # rempli par build()
+
+
+def build_footer(regions):
+    links = " · ".join(f'<a href="{SITE_BASE}/regions/{slugify(r)}/">{esc(r)}</a>' for r in regions)
+    return f"""
   <footer>
-    Données houle &amp; vent : Open-Meteo · Bouées : Candhis / Cerema (Licence Ouverte) · Webcams : gosurf.fr &amp; partenaires.<br>
-    swelleo — le verdict go/no-go pour savoir s'il faut aller surfer.
+    <nav class="fnav glass" aria-label="Pied de page">
+      <div><b>Régions</b> {links}</div>
+      <div><a href="{SITE_BASE}/">Accueil</a> · <a href="{SITE_BASE}/a-propos/">À propos</a> · <a href="{SITE_BASE}/mentions-legales/">Mentions légales</a> · <a href="{SITE_BASE}/confidentialite/">Confidentialité</a> · <a href="https://github.com/loupeirrot/swelleo" target="_blank" rel="noopener">GitHub</a></div>
+    </nav>
+    <div class="fcred">swelleo — le verdict go/no-go · Données : Open-Meteo · Bouées : Candhis / Cerema (Licence Ouverte) · Webcams : gosurf.fr &amp; partenaires</div>
   </footer>
 </div>
 <script>{SCRIPT}</script>
 </body>
 </html>"""
+
+
+def content_page(slug_, title, desc, h1, body_html):
+    url = f"{SITE_BASE}/{slug_}/"
+    jsonld = json.dumps({"@context": "https://schema.org", "@type": "WebPage", "name": title, "description": desc, "url": url}, ensure_ascii=False)
+    html = head(title, desc, url, "wave-golden", jsonld) + f"""
+  <div class="crumb"><a href="{SITE_BASE}/">Accueil</a> · {esc(h1)}</div>
+  <h1 style="margin-top:22px">{esc(h1)}</h1>
+  <div class="card glass reveal" style="margin-top:14px">{body_html}</div>{FOOTER}"""
+    return url, html
 
 
 def spot_page(spot, tides, buoys):
@@ -274,7 +297,7 @@ def spot_page(spot, tides, buoys):
   <div class="card glass reveal">
     <h2>À propos de ce spot</h2>
     <p class="about">Le verdict <strong style="color:{vcolor}">{vword}</strong> pour {esc(name)} est calculé à partir de la houle (hauteur, période, direction) et du vent, croisés avec l'orientation du spot. Ouvrez l'app pour le détail heure par heure et comparer avec les autres spots de <a href="{SITE_BASE}/regions/{rslug}/">{esc(region)}</a>.</p>
-  </div>{FOOT}"""
+  </div>{FOOTER}"""
     return url, html
 
 
@@ -332,15 +355,48 @@ def region_page(region, spots, tides):
   <div class="card glass reveal">
     <h2>Surfer en {esc(region)}</h2>
     <p class="about">swelleo calcule pour chaque spot de {esc(region)} un verdict clair go/no-go à partir de la houle, du vent et de l'orientation du spot, avec marées et bouées en direct. De quoi savoir en un coup d'œil où aller surfer aujourd'hui.</p>
-  </div>{FOOT}"""
+  </div>{FOOTER}"""
     return url, html
 
 
+CONTENT = {
+    "a-propos": ("À propos de swelleo — comment ça marche",
+                 "swelleo donne un verdict clair go/no-go pour savoir s'il faut aller surfer. Découvrez comment le score est calculé et d'où viennent les données.",
+                 "À propos de swelleo",
+                 """<h2>Le principe</h2>
+<p class="about">swelleo répond à une seule question : <strong style="color:var(--go)">faut-il aller surfer ?</strong> Pour chaque spot, un verdict clair — <strong style="color:#34e89e">GO</strong>, <strong style="color:#ffce6a">OK</strong> ou <strong style="color:#ff6b6b">FLAT</strong> — au lieu de tableaux de chiffres à déchiffrer.</p>
+<h2 style="margin-top:18px">Comment le score est calculé</h2>
+<p class="about">Une note sur 10 est calculée heure par heure à partir de la <strong>houle</strong> (hauteur, période, direction), du <strong>vent</strong> (force, direction, offshore/onshore) et de l'<strong>orientation du spot</strong>. ≥ 6,5 → GO · 4,5–6,5 → OK · &lt; 4,5 → FLAT. On affiche le meilleur créneau à venir, la marée et la bouée en direct.</p>
+<h2 style="margin-top:18px">Les données</h2>
+<p class="about">Prévisions houle &amp; vent : Open-Meteo. Bouées de mesure : Candhis / Cerema (Licence Ouverte). Webcams : gosurf.fr &amp; partenaires. Marées calculées par cycle. Gratuit, sans pub, sans compte.</p>"""),
+    "mentions-legales": ("Mentions légales | swelleo",
+                         "Mentions légales du site swelleo.",
+                         "Mentions légales",
+                         """<p class="about"><strong>Éditeur :</strong> swelleo — projet personnel non commercial. Contact : via le dépôt <a href="https://github.com/loupeirrot/swelleo" target="_blank" rel="noopener">GitHub</a>.</p>
+<p class="about" style="margin-top:12px"><strong>Hébergement :</strong> GitHub Pages — GitHub, Inc., 88 Colin P. Kelly Jr. Street, San Francisco, CA 94107, USA.</p>
+<p class="about" style="margin-top:12px"><strong>Données :</strong> Open-Meteo (prévisions), Candhis / Cerema sous Licence Ouverte (bouées), webcams des partenaires cités. swelleo n'est pas responsable de l'exactitude des prévisions : restez prudents et jugez toujours les conditions sur place.</p>"""),
+    "confidentialite": ("Confidentialité | swelleo",
+                        "Politique de confidentialité de swelleo : aucune donnée personnelle collectée.",
+                        "Confidentialité",
+                        """<p class="about">swelleo respecte ta vie privée : <strong>aucune donnée personnelle collectée</strong>, pas de publicité, pas de tracker, pas de cookie de suivi.</p>
+<p class="about" style="margin-top:12px"><strong>Favoris :</strong> tes spots favoris sont enregistrés <strong>uniquement sur ton appareil</strong> (localStorage) et ne sont jamais envoyés.</p>
+<p class="about" style="margin-top:12px"><strong>Géolocalisation :</strong> utilisée seulement si tu cliques « près de moi », traitée localement, jamais stockée ni transmise.</p>
+<p class="about" style="margin-top:12px"><strong>Hébergement :</strong> GitHub Pages peut conserver des journaux techniques standards (adresse IP) à des fins de sécurité, hors du contrôle de swelleo.</p>"""),
+}
+
+
 def build():
+    global FOOTER
     data = json.load(open(os.path.join(HERE, "data.json"), encoding="utf-8"))
     tides = data.get("tides", {})
     buoys = data.get("buoys", {})
     os.makedirs(OUT_DIR, exist_ok=True)
+
+    regions = {}
+    for s in data["spots"]:
+        regions.setdefault(s["region"], []).append(s)
+    FOOTER = build_footer(list(regions.keys()))   # footer partagé avec liens régions/utilitaires
+
     urls = [f"{SITE_BASE}/"]
 
     for spot in data["spots"]:
@@ -353,14 +409,19 @@ def build():
             f.write(html)
         urls.append(url)
 
-    regions = {}
-    for s in data["spots"]:
-        regions.setdefault(s["region"], []).append(s)
     for region, spots in regions.items():
         url, html = region_page(region, spots, tides)
         if not url:
             continue
         d = os.path.join(HERE, "regions", slugify(region))
+        os.makedirs(d, exist_ok=True)
+        with open(os.path.join(d, "index.html"), "w", encoding="utf-8") as f:
+            f.write(html)
+        urls.append(url)
+
+    for cslug, (title, desc, h1, body) in CONTENT.items():
+        url, html = content_page(cslug, title, desc, h1, body)
+        d = os.path.join(HERE, cslug)
         os.makedirs(d, exist_ok=True)
         with open(os.path.join(d, "index.html"), "w", encoding="utf-8") as f:
             f.write(html)
@@ -376,7 +437,7 @@ def build():
     with open(os.path.join(HERE, "robots.txt"), "w", encoding="utf-8") as f:
         f.write(f"User-agent: *\nAllow: /\nSitemap: {SITE_BASE}/sitemap.xml\n")
 
-    print(f"✅ {len(data['spots'])} pages spot + {len(regions)} pages région + sitemap.xml + robots.txt")
+    print(f"✅ {len(data['spots'])} pages spot + {len(regions)} pages région + {len(CONTENT)} pages utilitaires + sitemap.xml + robots.txt")
 
 
 if __name__ == "__main__":
