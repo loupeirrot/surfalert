@@ -87,10 +87,17 @@ STYLE = """
       linear-gradient(180deg,var(--bg),var(--bg2));background-attachment:fixed}
   a{color:var(--go);text-decoration:none}
   .wrap{max-width:680px;margin:0 auto;padding:16px 16px 60px;position:relative;z-index:1}
-  .top{display:inline-flex;align-items:center;gap:10px;padding:9px 4px 0;color:var(--text);text-decoration:none;transition:opacity .2s}
-  .top:hover{opacity:0.8}
-  .top img{width:30px;height:30px;border-radius:8px}
-  .top b{font-size:1.05rem;font-weight:600}
+  .island{position:sticky;top:12px;z-index:40;display:flex;align-items:center;justify-content:space-between;gap:12px;
+    padding:8px 8px 8px 16px;border-radius:999px;margin-bottom:8px}
+  .island .brand{display:inline-flex;align-items:center;gap:9px;color:var(--text);text-decoration:none;transition:opacity .2s}
+  .island .brand:hover{opacity:0.82}
+  .island .brand img{width:26px;height:26px;border-radius:7px}
+  .island .brand b{font-size:1.02rem;font-weight:600}
+  .nav-cta{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,0.06);border:1px solid var(--stroke);
+    color:var(--text);font-weight:600;font-size:0.82rem;padding:7px 7px 7px 14px;border-radius:999px;
+    transition:transform .3s var(--ease),background .2s}
+  .nav-cta .ic{width:22px;height:22px;border-radius:50%;background:var(--go);color:#04231a;display:flex;align-items:center;justify-content:center;font-size:0.8rem;transition:transform .3s var(--ease)}
+  .nav-cta:hover{background:rgba(255,255,255,0.12)} .nav-cta:active{transform:scale(0.97)} .nav-cta:hover .ic{transform:translateX(2px)}
   .crumb{font-size:0.82rem;color:var(--dim);margin:14px 4px 0}
   .hero{position:relative;min-height:clamp(380px,60vh,600px);border-radius:30px;overflow:hidden;margin-top:12px;
     display:flex;align-items:center;justify-content:center;isolation:isolate}
@@ -142,11 +149,24 @@ STYLE = """
   .scard .sc-name{font-weight:600;font-size:1rem;margin-top:8px}
   .scard .sc-cond{font-size:0.8rem;color:var(--dim);margin-top:3px}
   .scard .sc-go{font-size:0.78rem;color:var(--go);margin-top:9px}
-  footer{margin-top:34px;font-size:0.78rem;color:var(--dim);line-height:1.7}
-  .fnav{display:grid;gap:9px;padding:20px;border-radius:18px}
-  .fnav b{color:var(--text);font-weight:600;margin-right:4px}
-  .fnav a{color:var(--dim)}.fnav a:hover{color:var(--text)}
-  .fcred{text-align:center;font-size:0.7rem;margin-top:16px;opacity:0.85}
+  .site-footer{margin-top:56px}
+  .ft-inner{padding:30px 26px 22px}
+  .ft-top{display:grid;grid-template-columns:1.3fr 1.7fr;gap:30px}
+  .ft-logo{display:inline-flex;align-items:center;gap:10px;color:var(--text);text-decoration:none}
+  .ft-logo img{width:28px;height:28px;border-radius:8px}
+  .ft-logo b{font-size:1.15rem;font-weight:600}
+  .ft-tag{color:var(--dim);font-size:0.9rem;margin:14px 0 18px;max-width:34ch;line-height:1.6}
+  .ft-cta{display:inline-flex;align-items:center;gap:10px;background:var(--go);color:#04231a;font-weight:700;font-size:0.9rem;
+    padding:9px 9px 9px 18px;border-radius:999px;transition:transform .3s var(--ease)}
+  .ft-cta .ic{width:26px;height:26px;border-radius:50%;background:rgba(4,35,26,0.18);display:flex;align-items:center;justify-content:center;transition:transform .3s var(--ease)}
+  .ft-cta:active{transform:scale(0.98)} .ft-cta:hover .ic{transform:translateX(3px)}
+  .ft-cols{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+  .ft-col{display:flex;flex-direction:column;gap:9px}
+  .ft-h{font-size:0.6rem;letter-spacing:0.2em;text-transform:uppercase;color:var(--dim);opacity:0.7;margin-bottom:2px}
+  .ft-col a{color:var(--dim);font-size:0.9rem;transition:color .2s} .ft-col a:hover{color:var(--text)}
+  .ft-bottom{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;margin-top:24px;padding-top:16px;border-top:1px solid var(--stroke);font-size:0.74rem;color:var(--dim)}
+  .ft-bottom a{color:var(--go)} .ft-cred{opacity:0.82}
+  @media(max-width:620px){.ft-top{grid-template-columns:1fr;gap:24px}.ft-cols{grid-template-columns:1fr 1fr}}
   .reveal{opacity:0;transform:translateY(26px);filter:blur(8px);transition:opacity .8s var(--ease),transform .8s var(--ease),filter .8s ease}
   .reveal.in{opacity:1;transform:none;filter:none}
   @keyframes verdictPulse{0%,100%{text-shadow:0 0 42px var(--glow,#34e89e)}50%{text-shadow:0 0 90px var(--glow,#34e89e),0 0 38px var(--glow,#34e89e)}}
@@ -206,21 +226,37 @@ def head(title, desc, url, photo, jsonld):
 </head>
 <body>
 <div class="wrap">
-  <a class="top" href="{SITE_BASE}/" aria-label="Retour à l'accueil swelleo"><img src="{SITE_BASE}/assets/icon-192.png" alt="swelleo"><b>swelleo<span style="color:var(--go)">.</span></b></a>"""
+  <nav class="island glass">
+    <a class="brand" href="{SITE_BASE}/" aria-label="Retour à l'accueil swelleo"><img src="{SITE_BASE}/assets/icon-192.png" alt="swelleo"><b>swelleo<span style="color:var(--go)">.</span></b></a>
+    <a class="nav-cta" href="{SITE_BASE}/">Ouvrir l'app <span class="ic">→</span></a>
+  </nav>"""
 
 
 FOOTER = ""  # rempli par build()
 
 
 def build_footer(regions):
-    links = " · ".join(f'<a href="{SITE_BASE}/regions/{slugify(r)}/">{esc(r)}</a>' for r in regions)
+    rlinks = "".join(f'<a href="{SITE_BASE}/regions/{slugify(r)}/">{esc(r)}</a>' for r in regions)
     return f"""
-  <footer>
-    <nav class="fnav glass" aria-label="Pied de page">
-      <div><b>Régions</b> {links}</div>
-      <div><a href="{SITE_BASE}/">Accueil</a> · <a href="{SITE_BASE}/a-propos/">À propos</a> · <a href="{SITE_BASE}/mentions-legales/">Mentions légales</a> · <a href="{SITE_BASE}/confidentialite/">Confidentialité</a> · <a href="https://github.com/loupeirrot/swelleo" target="_blank" rel="noopener">GitHub</a></div>
-    </nav>
-    <div class="fcred">swelleo — le verdict go/no-go · Données : Open-Meteo · Bouées : Candhis / Cerema (Licence Ouverte) · Webcams : gosurf.fr &amp; partenaires</div>
+  <footer class="site-footer reveal">
+    <div class="ft-inner glass">
+      <div class="ft-top">
+        <div class="ft-brand">
+          <a class="ft-logo" href="{SITE_BASE}/"><img src="{SITE_BASE}/assets/icon-192.png" alt="swelleo"><b>swelleo<span style="color:var(--go)">.</span></b></a>
+          <p class="ft-tag">Le verdict <b style="color:var(--go)">go</b> · ok · flat pour savoir s'il faut aller surfer. Prévision, houle, marées et webcam par spot.</p>
+          <a class="ft-cta" href="{SITE_BASE}/">Ouvrir l'app <span class="ic">→</span></a>
+        </div>
+        <nav class="ft-cols" aria-label="Pied de page">
+          <div class="ft-col"><span class="ft-h">Régions</span>{rlinks}</div>
+          <div class="ft-col"><span class="ft-h">Le site</span><a href="{SITE_BASE}/a-propos/">À propos</a><a href="{SITE_BASE}/mentions-legales/">Mentions légales</a><a href="{SITE_BASE}/confidentialite/">Confidentialité</a></div>
+          <div class="ft-col"><span class="ft-h">Ressources</span><a href="https://github.com/loupeirrot/swelleo" target="_blank" rel="noopener">GitHub</a><a href="https://pibes.fr" target="_blank" rel="noopener">pibes.fr</a></div>
+        </nav>
+      </div>
+      <div class="ft-bottom">
+        <span>© 2026 swelleo — créé par <a href="https://pibes.fr" target="_blank" rel="noopener">Pierre · pibes.fr</a></span>
+        <span class="ft-cred">Open-Meteo · Candhis / Cerema (Licence Ouverte) · gosurf.fr</span>
+      </div>
+    </div>
   </footer>
 </div>
 <script>{SCRIPT}</script>

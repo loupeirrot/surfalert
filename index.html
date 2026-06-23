@@ -235,12 +235,21 @@
   .legend span { display:flex; align-items:center; gap:5px; }
   .dot { width:12px; height:12px; border-radius:4px; display:inline-block; }
 
-  footer { color:var(--dim); font-size:0.78rem; margin-top:44px; line-height:1.7; }
-  .fnav { display:grid; gap:9px; padding:20px; border-radius:18px; }
-  .fnav b { color:var(--text); font-weight:600; margin-right:4px; }
-  .fnav a { color:var(--dim); }
-  .fnav a:hover { color:var(--text); }
-  .fcred { text-align:center; font-size:0.7rem; margin-top:16px; opacity:0.8; }
+  .site-footer { margin-top:56px; }
+  .ft-inner { padding:30px 26px 22px; border-radius:26px; }
+  .ft-top { display:grid; grid-template-columns:1.3fr 1.7fr; gap:30px; }
+  .ft-logo { display:inline-flex; align-items:center; gap:10px; color:var(--text); text-decoration:none; }
+  .ft-logo img { width:28px; height:28px; border-radius:8px; }
+  .ft-logo b { font-family:var(--head); font-size:1.15rem; font-weight:600; }
+  .ft-tag { color:var(--dim); font-size:0.9rem; margin-top:14px; max-width:34ch; line-height:1.6; }
+  .ft-cols { display:grid; grid-template-columns:repeat(3,1fr); gap:18px; }
+  .ft-col { display:flex; flex-direction:column; gap:9px; }
+  .ft-h { font-family:var(--head); font-size:0.6rem; letter-spacing:0.2em; text-transform:uppercase; color:var(--dim); opacity:0.7; margin-bottom:2px; }
+  .ft-col a { color:var(--dim); font-size:0.9rem; transition:color .2s; }
+  .ft-col a:hover { color:var(--text); }
+  .ft-bottom { display:flex; flex-wrap:wrap; justify-content:space-between; gap:8px; margin-top:24px; padding-top:16px; border-top:1px solid var(--stroke); font-size:0.74rem; color:var(--dim); }
+  .ft-bottom a { color:var(--go); } .ft-cred { opacity:0.82; }
+  @media (max-width:620px) { .ft-top { grid-template-columns:1fr; gap:24px; } .ft-cols { grid-template-columns:1fr 1fr; } }
   .sc-fiche { display:inline-block; margin-top:8px; font-size:0.74rem; color:var(--go); font-weight:600; }
 
   /* ── Reveal motion ── */
@@ -337,12 +346,24 @@
   <button class="toggle glass" id="toggle">voir le détail heure par heure ↓</button>
   <div id="detail" class="hidden"></div>
 
-  <footer>
-    <nav class="fnav" aria-label="Pied de page">
-      <div><b>Régions</b> <a href="regions/landes/">Landes</a> · <a href="regions/pays-basque/">Pays Basque</a> · <a href="regions/gironde/">Gironde</a> · <a href="regions/vendee/">Vendée</a> · <a href="regions/finistere/">Finistère</a></div>
-      <div><a href="a-propos/">À propos</a> · <a href="mentions-legales/">Mentions légales</a> · <a href="confidentialite/">Confidentialité</a> · <a href="https://github.com/loupeirrot/swelleo" target="_blank" rel="noopener">GitHub</a></div>
-    </nav>
-    <div class="fcred">swelleo — le verdict go/no-go · Données : Open-Meteo · Bouées : Candhis / Cerema (Licence Ouverte) · Webcams : gosurf.fr &amp; partenaires</div>
+  <footer class="site-footer reveal">
+    <div class="ft-inner glass">
+      <div class="ft-top">
+        <div class="ft-brand">
+          <a class="ft-logo" href="./"><img src="assets/icon-192.png" alt="swelleo"><b>swelleo<span class="d">.</span></b></a>
+          <p class="ft-tag">Le verdict <b style="color:var(--go)">go</b> · ok · flat pour savoir s'il faut aller surfer. Prévision, houle, marées et webcam par spot.</p>
+        </div>
+        <nav class="ft-cols" aria-label="Pied de page">
+          <div class="ft-col"><span class="ft-h">Régions</span><a href="regions/landes/">Landes</a><a href="regions/pays-basque/">Pays Basque</a><a href="regions/gironde/">Gironde</a><a href="regions/vendee/">Vendée</a><a href="regions/finistere/">Finistère</a></div>
+          <div class="ft-col"><span class="ft-h">Le site</span><a href="a-propos/">À propos</a><a href="mentions-legales/">Mentions légales</a><a href="confidentialite/">Confidentialité</a></div>
+          <div class="ft-col"><span class="ft-h">Ressources</span><a href="https://github.com/loupeirrot/swelleo" target="_blank" rel="noopener">GitHub</a><a href="https://pibes.fr" target="_blank" rel="noopener">pibes.fr</a></div>
+        </nav>
+      </div>
+      <div class="ft-bottom">
+        <span>© 2026 swelleo — créé par <a href="https://pibes.fr" target="_blank" rel="noopener">Pierre · pibes.fr</a></span>
+        <span class="ft-cred">Open-Meteo · Candhis / Cerema (Licence Ouverte) · gosurf.fr</span>
+      </div>
+    </div>
   </footer>
 </main>
 
