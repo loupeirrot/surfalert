@@ -116,6 +116,7 @@ STYLE = """
     transition:transform .2s ease-out;transform:translate3d(calc(var(--hx,0px) * -0.4),calc(var(--hy,0px) * -0.4),0)}
   .hero-sub{font-size:1.05rem;font-weight:600;margin-top:14px}
   .hero-up{font-size:0.86rem;color:var(--dim);margin-top:6px}
+  .content-hero{min-height:clamp(240px,36vh,360px)}
   h1{font-size:1.35rem;font-weight:600;margin:26px 4px 4px}
   .sub{color:var(--dim);margin:0 4px 18px;font-size:0.95rem}
   .glass{background:
@@ -129,7 +130,7 @@ STYLE = """
     background:radial-gradient(190px 190px at var(--mx,50%) var(--my,50%),rgba(255,248,230,0.32),rgba(255,248,230,0.06) 38%,transparent 60%);
     opacity:0;transition:opacity .3s var(--ease);mix-blend-mode:screen}
   .card.lit::before{opacity:1}
-  .card.lit{transform:perspective(800px) rotateX(var(--ry,0deg)) rotateY(var(--rx,0deg)) scale(1.015);
+  .card.lit{transform:perspective(800px) rotateX(var(--ry,0deg)) rotateY(var(--rx,0deg)) scale(1.015)!important;
     transition:transform .1s ease-out,box-shadow .3s var(--ease);z-index:5;
     box-shadow:0 34px 80px rgba(2,8,18,0.66),inset 0 1px 0 rgba(255,255,255,0.22)}
   .rows{display:grid;gap:8px}
@@ -160,7 +161,7 @@ STYLE = """
     padding:9px 9px 9px 18px;border-radius:999px;transition:transform .3s var(--ease)}
   .ft-cta .ic{width:26px;height:26px;border-radius:50%;background:rgba(4,35,26,0.18);display:flex;align-items:center;justify-content:center;transition:transform .3s var(--ease)}
   .ft-cta:active{transform:scale(0.98)} .ft-cta:hover .ic{transform:translateX(3px)}
-  .ft-cols{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+  .ft-cols{display:grid;grid-template-columns:repeat(2,1fr);gap:18px}
   .ft-col{display:flex;flex-direction:column;gap:9px}
   .ft-h{font-size:0.6rem;letter-spacing:0.2em;text-transform:uppercase;color:var(--dim);opacity:0.7;margin-bottom:2px}
   .ft-col a{color:var(--dim);font-size:0.9rem;transition:color .2s} .ft-col a:hover{color:var(--text)}
@@ -246,17 +247,16 @@ def build_footer(regions):
       <div class="ft-top">
         <div class="ft-brand">
           <a class="ft-logo" href="{SITE_BASE}/"><img src="{SITE_BASE}/assets/icon-192.png" alt="swelleo"><b>swelleo<span style="color:var(--go)">.</span></b></a>
-          <p class="ft-tag">Le verdict <b style="color:var(--go)">go</b> · ok · flat pour savoir s'il faut aller surfer. Prévision, houle, marées et webcam par spot.</p>
+          <p class="ft-tag">Faut-il aller surfer&nbsp;? La réponse en un mot, spot par spot&nbsp;: <b style="color:#34e89e">go</b>, <b style="color:#ffce6a">ok</b> ou <b style="color:#ff6b6b">flat</b>.</p>
           <a class="ft-cta" href="{SITE_BASE}/">Ouvrir l'app <span class="ic">→</span></a>
         </div>
         <nav class="ft-cols" aria-label="Pied de page">
           <div class="ft-col"><span class="ft-h">Régions</span>{rlinks}</div>
           <div class="ft-col"><span class="ft-h">Le site</span><a href="{SITE_BASE}/a-propos/">À propos</a><a href="{SITE_BASE}/mentions-legales/">Mentions légales</a><a href="{SITE_BASE}/confidentialite/">Confidentialité</a></div>
-          <div class="ft-col"><span class="ft-h">Ressources</span><a href="https://github.com/loupeirrot/swelleo" target="_blank" rel="noopener">GitHub</a><a href="https://pibes.fr" target="_blank" rel="noopener">pibes.fr</a></div>
         </nav>
       </div>
       <div class="ft-bottom">
-        <span>© 2026 swelleo — créé par <a href="https://pibes.fr" target="_blank" rel="noopener">Pierre · pibes.fr</a></span>
+        <span>© 2026 swelleo — créé par <a href="https://pibes.fr" target="_blank" rel="noopener">pibes.fr</a></span>
         <span class="ft-cred">Open-Meteo · Candhis / Cerema (Licence Ouverte) · gosurf.fr</span>
       </div>
     </div>
@@ -267,14 +267,28 @@ def build_footer(regions):
 </html>"""
 
 
-def content_page(slug_, title, desc, h1, body_html):
+def content_page(slug_, title, desc, h1, body_html, hero_img=None, hero_caption=None):
     url = f"{SITE_BASE}/{slug_}/"
     jsonld = json.dumps({"@context": "https://schema.org", "@type": "WebPage", "name": title, "description": desc, "url": url}, ensure_ascii=False)
-    html = head(title, desc, url, "wave-golden", jsonld) + f"""
+    if hero_img:
+        hero = f"""
+  <section id="hero" class="hero content-hero">
+    <div class="hero-bg"><img src="{SITE_BASE}/assets/{hero_img}" alt="{esc(h1)}" onerror="this.src='{SITE_BASE}/assets/wave-clean.webp'" fetchpriority="high"></div>
+    <div class="hero-inner">
+      <span class="eyebrow">swelleo</span>
+      <div class="rname">{esc(h1)}</div>
+      {f'<div class="hero-up">{esc(hero_caption)}</div>' if hero_caption else ''}
+    </div>
+  </section>"""
+        body = f"""
+  <div class="crumb"><a href="{SITE_BASE}/">Accueil</a> · {esc(h1)}</div>{hero}
+  <div class="card glass reveal" style="margin-top:18px">{body_html}</div>{FOOTER}"""
+    else:
+        body = f"""
   <div class="crumb"><a href="{SITE_BASE}/">Accueil</a> · {esc(h1)}</div>
   <h1 style="margin-top:22px">{esc(h1)}</h1>
   <div class="card glass reveal" style="margin-top:14px">{body_html}</div>{FOOTER}"""
-    return url, html
+    return url, head(title, desc, url, "og", jsonld) + body
 
 
 def spot_page(spot, tides, buoys):
@@ -402,7 +416,8 @@ CONTENT = {
     "a-propos": ("À propos de swelleo — comment ça marche",
                  "swelleo donne un verdict clair go/no-go pour savoir s'il faut aller surfer. Découvrez comment le score est calculé et d'où viennent les données.",
                  "À propos de swelleo",
-                 """<h2>Le principe</h2>
+                 """<p class="about" style="font-size:1.05rem;color:var(--text)">Combien de fois on se lève à l'aube, on charge la planche, on roule jusqu'au spot… pour trouver la mer plate ou défoncée par le vent ? <strong>swelleo est né de cette frustration</strong> — et d'un hiver à chasser les vagues en Norvège, où savoir <em>quand</em> y aller changeait tout.</p>
+<h2 style="margin-top:20px">Le principe</h2>
 <p class="about">swelleo répond à une seule question : <strong style="color:var(--go)">faut-il aller surfer ?</strong> Pour chaque spot, un verdict clair — <strong style="color:#34e89e">GO</strong>, <strong style="color:#ffce6a">OK</strong> ou <strong style="color:#ff6b6b">FLAT</strong> — au lieu de tableaux de chiffres à déchiffrer.</p>
 <h2 style="margin-top:18px">Comment le score est calculé</h2>
 <p class="about">Une note sur 10 est calculée heure par heure à partir de la <strong>houle</strong> (hauteur, période, direction), du <strong>vent</strong> (force, direction, offshore/onshore) et de l'<strong>orientation du spot</strong>. ≥ 6,5 → GO · 4,5–6,5 → OK · &lt; 4,5 → FLAT. On affiche le meilleur créneau à venir, la marée et la bouée en direct.</p>
@@ -421,6 +436,11 @@ CONTENT = {
 <p class="about" style="margin-top:12px"><strong>Favoris :</strong> tes spots favoris sont enregistrés <strong>uniquement sur ton appareil</strong> (localStorage) et ne sont jamais envoyés.</p>
 <p class="about" style="margin-top:12px"><strong>Géolocalisation :</strong> utilisée seulement si tu cliques « près de moi », traitée localement, jamais stockée ni transmise.</p>
 <p class="about" style="margin-top:12px"><strong>Hébergement :</strong> GitHub Pages peut conserver des journaux techniques standards (adresse IP) à des fins de sécurité, hors du contrôle de swelleo.</p>"""),
+}
+
+# Image de héros optionnelle par page de contenu (souvenir de Norvège pour À propos)
+CONTENT_HERO = {
+    "a-propos": ("about-norway.jpg", "Souvenir de Norvège"),
 }
 
 
@@ -459,7 +479,10 @@ def build():
         urls.append(url)
 
     for cslug, (title, desc, h1, body) in CONTENT.items():
-        url, html = content_page(cslug, title, desc, h1, body)
+        hero = CONTENT_HERO.get(cslug)
+        url, html = content_page(cslug, title, desc, h1, body,
+                                 hero_img=hero[0] if hero else None,
+                                 hero_caption=hero[1] if hero else None)
         d = os.path.join(HERE, cslug)
         os.makedirs(d, exist_ok=True)
         with open(os.path.join(d, "index.html"), "w", encoding="utf-8") as f:
