@@ -578,9 +578,9 @@ function tideLine(timeStr, tides) {
   return shown.length ? '🌊 marée ' + shown.map(fmt).join(' → ') + (est ? ' ≈' : '') : '';
 }
 function whenRange(win, joursFr) {
-  const when = whenLabel(win.start, joursFr);
-  const sH = new Date(win.start).getHours(), eH = new Date(win.end).getHours();
-  return sH === eH ? `<b>${when}</b> à ${sH}h` : `<b>${when}</b> · ${sH}h–${eH}h`;
+  const t = win.peak ? win.peak.time : win.start;   // heure du pic (fixe), pas la fourchette
+  const when = whenLabel(t, joursFr);
+  return `<b>${when}</b> à ${new Date(t).getHours()}h`;
 }
 
 // ── Hero verdict ──
