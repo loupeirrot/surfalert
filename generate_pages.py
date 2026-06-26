@@ -270,6 +270,7 @@ def build_footer(regions):
     </div>
   </footer>
 </div>
+<script data-goatcounter="https://swelleo.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
 <script>{SCRIPT}</script>
 </body>
 </html>"""
