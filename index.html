@@ -618,10 +618,10 @@ function renderHero() {
 
 // ── Featured card (best upcoming) ──
 function featureCard(spot, win) {
-  const p = win.peak, c = solid(p.score), g = grad(p.score), v = verdict(p.score);
-  return `<div class="card glass feature b-session reveal" style="--vc:${c}">
+  const p = win.peak, v = verdict(p.score);
+  return `<div class="card glass feature b-session reveal" style="--vc:${v.color}">
     <span class="vtag" style="background:${v.color}26;color:${v.color};border:1px solid ${v.color}55">best session</span>
-    <div class="fscore"><span class="n" style="background-image:${g}">${p.score}</span><span class="o">/10</span></div>
+    <div class="fscore"><span class="n" style="background-image:linear-gradient(135deg,${v.color},${v.color})">${p.score}</span><span class="o">/10</span></div>
     <div class="fwhere">${spot.name}</div>
     <div class="fwhen">${whenRange(win, DATA.jours_fr)}</div>
     <div class="fline">🌊 ${condLine(p)}</div>
@@ -633,7 +633,7 @@ function spotCard(spot, win) {
   const p = win.peak, c = solid(p.score), v = verdict(p.score);
   return `<div class="card glass spot-card reveal">
     <div class="sc-top">
-      <span class="sc-score" style="background-image:${grad(p.score)}">${p.score}</span>
+      <span class="sc-score" style="background-image:linear-gradient(135deg,${v.color},${v.color})">${p.score}</span>
       <span class="sc-dot" style="background:${v.color};color:${v.color}"></span>
     </div>
     <div class="sc-name">${spot.name}</div>

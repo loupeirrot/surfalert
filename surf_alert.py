@@ -43,6 +43,8 @@ ALERT_THRESHOLD = 7.5      # En dessous : silence total (≥6.5 = GO, 7.5 = fort
 ALERT_FIRE     = 8.5       # Score "grosse session" sur spots prioritaires (notif sonore)
 FORECAST_HOURS = 120       # Fenêtre d'analyse (5 jours)
 SITE_URL       = "https://swelleo.com"
+# Régions à surveiller pour l'alerte perso (None = toutes). Ex. ["Landes"] ou ["Landes","Pays Basque"].
+ALERT_REGIONS  = ["Landes"]
 
 # Chaque spot a ses paramètres propres :
 #   region     : pour regrouper les spots dans l'appli
@@ -428,6 +430,8 @@ def run():
     alerts = []   # (score, msg, is_fire, spot_name)
 
     for spot_name, spot_cfg in SPOTS.items():
+        if ALERT_REGIONS and spot_cfg.get("region") not in ALERT_REGIONS:
+            continue
         try:
             print(f"  → Analyse {spot_name}...")
             results = analyze_spot(spot_name, spot_cfg)

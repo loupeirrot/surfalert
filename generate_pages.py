@@ -57,6 +57,24 @@ def fmt_hour(iso):
         return ""
 
 
+_JOURS = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"]
+
+
+def when_label(iso):
+    """« aujourd'hui » / « demain » / « mardi 30/06 » selon la date."""
+    try:
+        dt = datetime.fromisoformat(iso)
+        today = datetime.now(dt.tzinfo).date()
+        d = (dt.date() - today).days
+        if d <= 0:
+            return "aujourd'hui"
+        if d == 1:
+            return "demain"
+        return f"{_JOURS[dt.weekday()]} {dt.day:02d}/{dt.month:02d}"
+    except Exception:
+        return ""
+
+
 def next_tide(tides, region):
     now = datetime.now(timezone.utc)
     for e in tides.get(region) or []:
@@ -306,7 +324,7 @@ def spot_page(spot, tides, buoys):
     wave = f"{w.get('wave_h','?')} m · {w.get('wave_p','?')} s · {w.get('swell_label','')}"
     wind = f"{w.get('wind_spd','?')} km/h {w.get('wind_label','')}"
     offshore = "offshore ✅" if w.get("offshore") else "onshore ⚠️"
-    when = f"créneau ~{fmt_hour(w.get('time',''))}"
+    when = f"{when_label(w.get('time',''))} à {fmt_hour(w.get('time',''))}".strip()
 
     b = buoys.get(region)
     buoy_row = ""
